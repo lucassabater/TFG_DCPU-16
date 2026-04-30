@@ -1,0 +1,334 @@
+#include "../include/dcpu16.h"
+
+#include <string.h>
+#include <stdbool.h>
+
+
+static uint16_t dummy_literal = 0;
+
+void dcpu_init(DCPU16 *cpu){
+    memset(cpu, 0, sizeof(DCPU16));
+
+    cpu->pc = 0x0000;
+    cpu->sp = 0x0000;
+    cpu->ia = 0x0000;
+    cpu->ex = 0x0000;
+    cpu->cycles = 0;
+    cpu->is_on_fire = false;
+}
+
+void cpu_step(DCPU16 *cpu) {
+    const uint16_t instr = cpu->ram[cpu->pc];
+
+    const uint8_t opcode = instr & 0x1F;
+
+    uint16_t *ptr_a = operand_val(cpu, (instr >> 10) & 0x3F, true);
+    uint16_t *ptr_b = operand_val(cpu, (instr >> 5) & 0x1F, false);
+
+    uint16_t a = *ptr_a;
+    uint16_t b = *ptr_b;
+
+    switch (opcode) {
+        case OP_SET:
+            *ptr_b = a;
+            cpu->cycles++;
+
+        case OP_ADD: {
+            const uint32_t rest = b + a;
+            *ptr_b = rest & 0xffff;
+            cpu->ex = (rest > 0xFFFF) ? 0x0001 : 0x0000;
+            cpu->cycles += 2;
+            break;
+        }
+
+        case OP_SUB: {
+            const int32_t rest = (int16_t)b - (int16_t)a;
+            *ptr_b = rest & 0xFFFF;
+            cpu->ex = (rest < 0) ? 0xFFFF : 0x0000;
+            cpu->cycles += 2;
+            break;
+        }
+
+        case OP_MUL: {
+            const uint32_t rest = (uint32_t)b * (uint32_t)a;
+            *ptr_b = rest & 0xFFFF;
+            cpu->ex = ((rest)>>16)&0xffff;
+            cpu->cycles += 2;
+            break;
+        }
+
+        case OP_MLI: {
+            const int32_t rest = (int32_t)b * (int32_t)a;
+            *ptr_b = rest & 0xFFFF;
+            cpu->ex = rest>>16 & 0xffff;
+            cpu->cycles += 2;
+            break;
+        }
+
+        case OP_DIV: {
+            if (a==0) {
+                *ptr_b = 0;
+                cpu->ex = 0;
+                cpu->cycles += 3;
+                break;
+            }
+            *ptr_b = b / a;
+            cpu->ex = ((uint32_t)b << 16) / a & 0xffff;
+            cpu->cycles += 3;
+            break;
+        }
+
+        case OP_DVI:{
+            if (a==0) {
+                *ptr_b = 0;
+                cpu->ex = 0;
+                cpu->cycles += 3;
+                break;
+            }
+            *ptr_b = (int16_t)b / (int16_t)a;
+            cpu->ex = ((int32_t)b << 16)/ a & 0xffff;
+            cpu->cycles += 3;
+            break;
+        }
+
+        case OP_MOD: {
+            if (a==0) {
+                *ptr_b = 0;
+            }else {
+                *ptr_b = b % a;
+            }
+            cpu->cycles += 3;
+            break;
+        }
+
+        case OP_MDI:{
+            if (a==0) {
+                *ptr_b = 0;
+            }else {
+                *ptr_b = (int16_t)b % (int16_t)a;
+            }
+            cpu->cycles += 3;
+            break;
+        }
+
+        case OP_AND: {
+            *ptr_b = a & b;
+            cpu->cycles++;
+        }
+
+        case OP_BOR: {
+            *ptr_b = a || b;
+            cpu->cycles++;
+        }
+
+        case OP_XOR:{
+            *ptr_b = a ^ b;
+            cpu->cycles++;
+        }
+
+        case OP_SHR:{
+            if (a >= 16) {
+                *ptr_b = 0;
+                cpu->ex = (a >= 32) ? 0 : (b >> (a - 16)) & 0xFFFF;
+            } else {
+                *ptr_b = (b >> a) & 0xFFFF;
+                cpu->ex = (((uint32_t)b << 16) >> a) & 0xFFFF;
+            }
+
+            cpu->cycles++;
+            break;
+        }
+
+        case OP_ASR: {
+            if (a >= 16) {
+                *ptr_b = ((int16_t)b < 0) ? 0xFFFF : 0x0000;
+                cpu->ex = (a >= 32) ? 0 : (int16_t)b >> (a - 16) & 0xFFFF;
+            } else {
+                *ptr_b = ((int16_t)b >> a) & 0xFFFF;
+                cpu->ex = (((int32_t)b << 16) >> a) & 0xFFFF;
+            }
+            cpu->cycles++;
+            break;
+        }
+
+        case OP_SHL: {
+            if (a >= 16) {
+                *ptr_b = 0;
+                cpu->ex = (a >= 32) ? 0 : (b << (a - 16)) & 0xFFFF;
+            } else {
+                *ptr_b = (b << a) & 0xFFFF;
+                cpu->ex = (((uint32_t)b << a) >> 16) & 0xFFFF;
+            }
+
+            cpu->cycles += 1;
+            break;
+        }
+
+        case OP_IFB: {
+            if ((b & a) != 0 ) {
+            }else {
+                skip_instruction(cpu);
+                cpu->cycles++;
+            }
+            cpu->cycles += 2;
+            break;
+        }
+
+        case OP_IFC: {
+            if ((b & a) == 0 ) {
+            }else {
+                skip_instruction(cpu);
+                cpu->cycles++;
+            }
+            cpu->cycles += 2;
+            break;
+        }
+
+        case OP_IFE: {
+            if (b == a) {
+            }else {
+                skip_instruction(cpu);
+                cpu->cycles++;
+            }
+            cpu->cycles += 2;
+            break;
+        }
+
+        case OP_IFN: {
+            if (b != a) {
+            }else {
+                skip_instruction(cpu);
+                cpu->cycles++;
+            }
+            cpu->cycles += 2;
+            break;
+        }
+
+        case OP_IFG: {
+            if (b > a) {
+            }else {
+                skip_instruction(cpu);
+                cpu->cycles++;
+            }
+            cpu->cycles += 2;
+            break;
+        }
+
+        case OP_IFA: {
+            if ((int16_t)b > (int16_t)a) {
+            }else {
+                skip_instruction(cpu);
+                cpu->cycles++;
+            }
+            cpu->cycles += 2;
+            break;
+        }
+
+        case OP_IFL: {
+            if (b < a) {
+            }else {
+                skip_instruction(cpu);
+                cpu->cycles++;
+            }
+            cpu->cycles += 2;
+            break;
+        }
+
+        case OP_IFU: {
+            if ((int16_t)b < (int16_t)a) {
+            }else {
+                skip_instruction(cpu);
+                cpu->cycles++;
+            }
+            cpu->cycles += 2;
+            break;
+        }
+
+        case OP_ADX: {
+            const uint32_t rest = b + a + cpu->ex;
+            *ptr_b = rest & 0xffff;
+            cpu->ex = (rest > 0xFFFF) ? 0x0001 : 0x0000;
+            cpu->cycles += 3;
+            break;
+        }
+        case OP_SBX: {
+            const int32_t rest = (int16_t)b - (int16_t)a + cpu->ex;
+            *ptr_b = rest & 0xFFFF;
+            cpu->ex = (rest < 0) ? 0xFFFF : 0x0000;
+            cpu->cycles += 3;
+            break;
+        }
+
+        case OP_STI: {
+            *ptr_b = a;
+            cpu->reg[6]++;
+            cpu->reg[7]++;
+            cpu->cycles++;
+            break;
+        }
+
+        case OP_STD: {
+            *ptr_b = a;
+            cpu->reg[6]--;
+            cpu->reg[7]--;
+            cpu->cycles++;
+            break;
+        }
+        default: cpu->cycles++; break;
+    }
+
+}
+
+uint16_t* operand_val(DCPU16 *cpu, const uint_fast8_t val, const bool is_a) {
+    switch (val) {
+        case REG_START ... 0x07:
+            return &cpu->reg[val - REG_START];
+
+        case PTR_REG ... 0x0F:
+            return &cpu->ram[cpu->reg[val - PTR_REG]];
+
+        case PTR_REG_NW ... 0x17:
+            return  &cpu->ram[cpu->reg[val - PTR_REG] + cpu->ram[cpu->pc++]];
+
+        case PUSH_POP:
+            if (is_a) {
+                return &cpu->ram[cpu->sp++];
+            }
+            return &cpu->ram[--cpu->sp];
+
+        case PEEK:
+            return &cpu->ram[cpu->sp];
+
+        case PICK:
+            return &cpu->ram[cpu->sp + cpu->ram[cpu->pc++]];
+
+        case SP:
+            return &cpu->sp;
+
+        case PC:
+            return &cpu->pc;
+
+        case EX:
+            return &cpu->ex;
+
+        case PTR_NW:
+            return &cpu->ram[cpu->ram[cpu->pc++]];
+
+        case NW:
+            return &cpu->ram[cpu->pc++];
+
+        case LITERAL_START ... 0x3F:
+            dummy_literal = (val - 0x21);
+            return &dummy_literal;
+
+        default:
+            return NULL;
+
+    }
+}
+
+void specop_parse(DCPU16 *cpu, opcode_e opcode){}
+
+static void skip_instruction(DCPU16 *cpu) {
+
+}
