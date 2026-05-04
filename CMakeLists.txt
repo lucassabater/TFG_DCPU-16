@@ -5,4 +5,4 @@ set(CMAKE_C_STANDARD 11)
 
 add_executable(untitled main.c
         include/dcpu16.h
-        src/dcpu16.cpp)
+        src/dcpu16.c)

@@ -15,7 +15,6 @@ void dcpu_init(DCPU16 *cpu){
     cpu->ia = 0x0000;
     cpu->ex = 0x0000;
     cpu->cycles = 0;
-    cpu->num_hardware = 0;
 
     memset(cpu->interruptq, 0, sizeof(cpu->interruptq));
     cpu->iq_head = -1;
@@ -23,6 +22,9 @@ void dcpu_init(DCPU16 *cpu){
     cpu->iq_count = 0;
     cpu->interrupt_enabled = true;
     cpu->is_on_fire = false;
+
+    cpu->num_hardware = 0;
+    cpu->bus = NULL;
 }
 
 void cpu_step(DCPU16 *cpu) {
@@ -35,7 +37,7 @@ void cpu_step(DCPU16 *cpu) {
     uint16_t a = *ptr_a;
 
     if (opcode == OP_SPECIAL) {
-        specop_parse(cpu, ptr_a, a ,(instr >> 5) & 0x1F);
+        specop_exec(cpu, ptr_a, a ,(instr >> 5) & 0x1F);
 
     }else {
         uint16_t *ptr_b = operand_val(cpu, (instr >> 5) & 0x1F, false);
@@ -365,7 +367,7 @@ uint16_t* operand_val(DCPU16 *cpu, const uint_fast8_t val, const bool is_a) {
     }
 }
 
-inline void specop_parse(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcode) {
+inline void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcode) {
     switch (opcode) {
         case SOP_JSR: {
             cpu->ram[--cpu->sp] = cpu->pc;
@@ -399,16 +401,36 @@ inline void specop_parse(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opco
             cpu->cycles += 2;
         }
         case SOP_HWQ: {
-            //TODO: HARDWARE DEVICE CONNECTION
-            cpu->reg[A] ;
-            cpu->reg[B] ;
-            cpu->reg[C] ;
-            cpu->reg[X] ;
-            cpu->reg[Y] ;
+            if (a < cpu->num_hardware) {
+                DCPU_Hardware *hw = cpu->bus[a];
 
+                cpu->reg[A] = hw->hardware_id & 0xFFFF;
+                cpu->reg[B] = (hw->hardware_id >> 16) & 0xFFFF;
+
+                cpu->reg[C] = hw->hardware_version;
+
+                cpu->reg[X] = hw->manufacturer & 0xFFFF;
+                cpu->reg[Y] = (hw->manufacturer >> 16) & 0xFFFF;
+            } else {
+                cpu->reg[A] = 0;
+                cpu->reg[B] = 0;
+                cpu->reg[C] = 0;
+                cpu->reg[X] = 0;
+                cpu->reg[Y] = 0;
+            }
+            cpu->cycles += 4;
+            break;
         }
         case SOP_HWI: {
-            //TODO: HARDWARE DEVICE INTERRUPT
+            if (a < cpu->num_hardware) {
+                DCPU_Hardware *hw = cpu->bus[a];
+
+                if (hw->handle_hwi != NULL) {
+                    hw->handle_hwi(hw, cpu);
+                }
+            }
+            cpu->cycles += 4;
+            break;
         }
         default: cpu->cycles++; break;
     }
@@ -439,13 +461,9 @@ void interrupt_dequeue(DCPU16 *cpu) {
         cpu->interrupt_enabled = true;
 
         cpu->ram[--cpu->sp] = cpu->pc;
-        cpu->ram[--cpu->sp] = cpu->reg[0];
+        cpu->ram[--cpu->sp] = cpu->reg[A];
 
         cpu->pc = cpu->ia;
-        cpu->reg[0] = message;
+        cpu->reg[A] = message;
     }
 }
-
-static void connectHardware(DCPU16 *cpu) {}
-
-static void hardwareInterrupt(DCPU16 *cpu) {}
