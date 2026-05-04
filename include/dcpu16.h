@@ -1,5 +1,5 @@
-#ifndef UNTITLED_CPU_H
-#define UNTITLED_CPU_H
+#ifndef CPU_H
+#define CPU_H
 
 #include <stdbool.h>
 #define word_length 16
@@ -7,15 +7,27 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define DCPU_REG_N 8
+#define DCPU_RAM_SIZE 65536
+#define DCPU_INTERRUPTQ_SIZE 256
+
 typedef struct {
-    uint16_t ram[65536];   // 64K palabras de memoria
-    uint16_t reg[8];       // Registros A, B, C, X, Y, Z, I, J
+    uint16_t ram[DCPU_RAM_SIZE];   // 64K palabras de memoria
+    uint16_t reg[DCPU_REG_N];       // Registros A, B, C, X, Y, Z, I, J
     uint16_t pc;
     uint16_t sp;
     uint16_t ex;
     uint16_t ia;
 
+    uint16_t num_hardware;
+
+    uint16_t interruptq[DCPU_INTERRUPTQ_SIZE];
+    bool interrupt_enabled;
+    uint8_t iq_head;
+    uint8_t iq_tail;
+    uint16_t iq_count;
     bool is_on_fire;
+
     unsigned long cycles;
 } DCPU16;
 
@@ -66,6 +78,10 @@ typedef enum {
 
 } specop_e;
 
+typedef enum {
+    A = 0x00, B, C, X, Y, Z, I,J
+} registers;
+
 
 // --- Tipos de Operandos / Valores (6 bits para 'a', 5 bits para 'b') ---
 // Para los registros y punteros, en vez de definir 8 constantes para cada uno,
@@ -101,6 +117,8 @@ typedef enum {
 void dcpu_init(DCPU16 *cpu);
 void cpu_parse(DCPU16 *cpu);
 uint16_t* operand_val(DCPU16 *cpu, uint_fast8_t number, bool is_a);
-void specop_parse(DCPU16 *cpu, opcode_e opcode);
+inline void specop_parse(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t b);
 static void skip_instruction(DCPU16 *cpu);
+void interrupt_enqueue(DCPU16 *cpu, uint16_t mensaje);
+void interrupt_dequeue(DCPU16 *cpu);
 #endif

@@ -7,13 +7,21 @@
 static uint16_t dummy_literal = 0;
 
 void dcpu_init(DCPU16 *cpu){
-    memset(cpu, 0, sizeof(DCPU16));
+    memset(cpu->ram, 0, sizeof(cpu->ram));
 
+    memset(cpu->reg, 0, sizeof(cpu->reg));
     cpu->pc = 0x0000;
     cpu->sp = 0x0000;
     cpu->ia = 0x0000;
     cpu->ex = 0x0000;
     cpu->cycles = 0;
+    cpu->num_hardware = 0;
+
+    memset(cpu->interruptq, 0, sizeof(cpu->interruptq));
+    cpu->iq_head = -1;
+    cpu->iq_tail = 0;
+    cpu->iq_count = 0;
+    cpu->interrupt_enabled = true;
     cpu->is_on_fire = false;
 }
 
@@ -29,6 +37,7 @@ void cpu_step(DCPU16 *cpu) {
     uint16_t b = *ptr_b;
 
     switch (opcode) {
+        case OP_SPECIAL: specop_parse(cpu, ptr_a, a ,b);
         case OP_SET:
             *ptr_b = a;
             cpu->cycles++;
@@ -261,16 +270,16 @@ void cpu_step(DCPU16 *cpu) {
 
         case OP_STI: {
             *ptr_b = a;
-            cpu->reg[6]++;
-            cpu->reg[7]++;
+            cpu->reg[I]++;
+            cpu->reg[J]++;
             cpu->cycles++;
             break;
         }
 
         case OP_STD: {
             *ptr_b = a;
-            cpu->reg[6]--;
-            cpu->reg[7]--;
+            cpu->reg[I]--;
+            cpu->reg[J]--;
             cpu->cycles++;
             break;
         }
@@ -327,8 +336,92 @@ uint16_t* operand_val(DCPU16 *cpu, const uint_fast8_t val, const bool is_a) {
     }
 }
 
-void specop_parse(DCPU16 *cpu, opcode_e opcode){}
-
-static void skip_instruction(DCPU16 *cpu) {
-
+inline void skip_instruction(DCPU16 *cpu) {
+    //TODO: SKIP INSTRUCTION FOR IF
 }
+
+
+inline void specop_parse(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcode) {
+    switch (opcode) {
+        case SOP_JSR: {
+            cpu->ram[--cpu->sp] = cpu->pc;
+            cpu->pc = a;
+            cpu->cycles += 3;
+        }
+        case SOP_INT: {
+            interrupt_enqueue(cpu, a);
+            cpu->cycles += 4;
+        }
+        case SOP_IAG: {
+            *ptr_a = cpu->ia;
+            cpu->cycles++;
+        }
+        case SOP_IAS: {
+            cpu->ia  = a;
+            cpu->cycles++;
+        }
+        case SOP_RFI: {
+            cpu->interrupt_enabled = false;
+            cpu->reg[A] = cpu->ram[cpu->sp++];
+            cpu->pc = cpu->ram[cpu->sp++];
+            cpu->cycles += 3;
+        }
+        case SOP_IAQ: {
+            cpu->interrupt_enabled = a != 0 ? true : false;
+            cpu->cycles += 2;
+        }
+        case SOP_HWN: {
+            *ptr_a =  cpu->num_hardware;
+            cpu->cycles += 2;
+        }
+        case SOP_HWQ: {
+            //TODO: HARDWARE DEVICE CONNECTION
+            cpu->reg[A] ;
+            cpu->reg[B] ;
+            cpu->reg[C] ;
+            cpu->reg[X] ;
+            cpu->reg[Y] ;
+
+        }
+        case SOP_HWI: {
+            //TODO: HARDWARE DEVICE INTERRUPT
+        }
+        default: cpu->cycles++; break;
+    }
+}
+
+void interrupt_enqueue(DCPU16 *cpu, uint16_t message) {
+    if (cpu->iq_count >= 256) {
+        cpu->is_on_fire = true;
+        return;
+    }
+
+    cpu->interruptq[cpu->iq_head] = message;
+    cpu->iq_head++;
+    cpu->iq_count++;
+}
+
+void interrupt_dequeue(DCPU16 *cpu) {
+    if (!cpu->interrupt_enabled && cpu->iq_count > 0) {
+
+        uint16_t message = cpu->interruptq[cpu->iq_tail];
+        cpu->iq_tail++;
+        cpu->iq_count--;
+
+        if (cpu->ia == 0) {
+            return;
+        }
+
+        cpu->interrupt_enabled = true;
+
+        cpu->ram[--cpu->sp] = cpu->pc;
+        cpu->ram[--cpu->sp] = cpu->reg[0];
+
+        cpu->pc = cpu->ia;
+        cpu->reg[0] = message;
+    }
+}
+
+static void connectHardware(DCPU16 *cpu) {}
+
+static void hardwareInterrupt(DCPU16 *cpu) {}
