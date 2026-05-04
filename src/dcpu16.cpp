@@ -26,267 +26,296 @@ void dcpu_init(DCPU16 *cpu){
 }
 
 void cpu_step(DCPU16 *cpu) {
-    const uint16_t instr = cpu->ram[cpu->pc];
+    const uint16_t instr = cpu->ram[cpu->pc++];
 
     const uint8_t opcode = instr & 0x1F;
 
     uint16_t *ptr_a = operand_val(cpu, (instr >> 10) & 0x3F, true);
-    uint16_t *ptr_b = operand_val(cpu, (instr >> 5) & 0x1F, false);
 
     uint16_t a = *ptr_a;
-    uint16_t b = *ptr_b;
 
-    switch (opcode) {
-        case OP_SPECIAL: specop_parse(cpu, ptr_a, a ,b);
-        case OP_SET:
-            *ptr_b = a;
-            cpu->cycles++;
+    if (opcode == OP_SPECIAL) {
+        specop_parse(cpu, ptr_a, a ,(instr >> 5) & 0x1F);
 
-        case OP_ADD: {
-            const uint32_t rest = b + a;
-            *ptr_b = rest & 0xffff;
-            cpu->ex = (rest > 0xFFFF) ? 0x0001 : 0x0000;
-            cpu->cycles += 2;
-            break;
-        }
+    }else {
+        uint16_t *ptr_b = operand_val(cpu, (instr >> 5) & 0x1F, false);
+        uint16_t b = *ptr_b;
 
-        case OP_SUB: {
-            const int32_t rest = (int16_t)b - (int16_t)a;
-            *ptr_b = rest & 0xFFFF;
-            cpu->ex = (rest < 0) ? 0xFFFF : 0x0000;
-            cpu->cycles += 2;
-            break;
-        }
+        switch (opcode) {
+            case OP_SET:
+                *ptr_b = a;
+                cpu->cycles++;
 
-        case OP_MUL: {
-            const uint32_t rest = (uint32_t)b * (uint32_t)a;
-            *ptr_b = rest & 0xFFFF;
-            cpu->ex = ((rest)>>16)&0xffff;
-            cpu->cycles += 2;
-            break;
-        }
+            case OP_ADD: {
+                const uint32_t rest = b + a;
+                *ptr_b = rest & 0xffff;
+                cpu->ex = (rest > 0xFFFF) ? 0x0001 : 0x0000;
+                cpu->cycles += 2;
+                break;
+            }
 
-        case OP_MLI: {
-            const int32_t rest = (int32_t)b * (int32_t)a;
-            *ptr_b = rest & 0xFFFF;
-            cpu->ex = rest>>16 & 0xffff;
-            cpu->cycles += 2;
-            break;
-        }
+            case OP_SUB: {
+                const int32_t rest = (int16_t)b - (int16_t)a;
+                *ptr_b = rest & 0xFFFF;
+                cpu->ex = (rest < 0) ? 0xFFFF : 0x0000;
+                cpu->cycles += 2;
+                break;
+            }
 
-        case OP_DIV: {
-            if (a==0) {
-                *ptr_b = 0;
-                cpu->ex = 0;
+            case OP_MUL: {
+                const uint32_t rest = (uint32_t)b * (uint32_t)a;
+                *ptr_b = rest & 0xFFFF;
+                cpu->ex = ((rest)>>16)&0xffff;
+                cpu->cycles += 2;
+                break;
+            }
+
+            case OP_MLI: {
+                const int32_t rest = (int32_t)b * (int32_t)a;
+                *ptr_b = rest & 0xFFFF;
+                cpu->ex = rest>>16 & 0xffff;
+                cpu->cycles += 2;
+                break;
+            }
+
+            case OP_DIV: {
+                if (a==0) {
+                    *ptr_b = 0;
+                    cpu->ex = 0;
+                    cpu->cycles += 3;
+                    break;
+                }
+                *ptr_b = b / a;
+                cpu->ex = ((uint32_t)b << 16) / a & 0xffff;
                 cpu->cycles += 3;
                 break;
             }
-            *ptr_b = b / a;
-            cpu->ex = ((uint32_t)b << 16) / a & 0xffff;
-            cpu->cycles += 3;
-            break;
-        }
 
-        case OP_DVI:{
-            if (a==0) {
-                *ptr_b = 0;
-                cpu->ex = 0;
+            case OP_DVI:{
+                if (a==0) {
+                    *ptr_b = 0;
+                    cpu->ex = 0;
+                    cpu->cycles += 3;
+                    break;
+                }
+                *ptr_b = (int16_t)b / (int16_t)a;
+                cpu->ex = ((int32_t)b << 16)/ a & 0xffff;
                 cpu->cycles += 3;
                 break;
             }
-            *ptr_b = (int16_t)b / (int16_t)a;
-            cpu->ex = ((int32_t)b << 16)/ a & 0xffff;
-            cpu->cycles += 3;
-            break;
-        }
 
-        case OP_MOD: {
-            if (a==0) {
-                *ptr_b = 0;
-            }else {
-                *ptr_b = b % a;
-            }
-            cpu->cycles += 3;
-            break;
-        }
-
-        case OP_MDI:{
-            if (a==0) {
-                *ptr_b = 0;
-            }else {
-                *ptr_b = (int16_t)b % (int16_t)a;
-            }
-            cpu->cycles += 3;
-            break;
-        }
-
-        case OP_AND: {
-            *ptr_b = a & b;
-            cpu->cycles++;
-        }
-
-        case OP_BOR: {
-            *ptr_b = a || b;
-            cpu->cycles++;
-        }
-
-        case OP_XOR:{
-            *ptr_b = a ^ b;
-            cpu->cycles++;
-        }
-
-        case OP_SHR:{
-            if (a >= 16) {
-                *ptr_b = 0;
-                cpu->ex = (a >= 32) ? 0 : (b >> (a - 16)) & 0xFFFF;
-            } else {
-                *ptr_b = (b >> a) & 0xFFFF;
-                cpu->ex = (((uint32_t)b << 16) >> a) & 0xFFFF;
+            case OP_MOD: {
+                if (a==0) {
+                    *ptr_b = 0;
+                }else {
+                    *ptr_b = b % a;
+                }
+                cpu->cycles += 3;
+                break;
             }
 
-            cpu->cycles++;
-            break;
-        }
-
-        case OP_ASR: {
-            if (a >= 16) {
-                *ptr_b = ((int16_t)b < 0) ? 0xFFFF : 0x0000;
-                cpu->ex = (a >= 32) ? 0 : (int16_t)b >> (a - 16) & 0xFFFF;
-            } else {
-                *ptr_b = ((int16_t)b >> a) & 0xFFFF;
-                cpu->ex = (((int32_t)b << 16) >> a) & 0xFFFF;
-            }
-            cpu->cycles++;
-            break;
-        }
-
-        case OP_SHL: {
-            if (a >= 16) {
-                *ptr_b = 0;
-                cpu->ex = (a >= 32) ? 0 : (b << (a - 16)) & 0xFFFF;
-            } else {
-                *ptr_b = (b << a) & 0xFFFF;
-                cpu->ex = (((uint32_t)b << a) >> 16) & 0xFFFF;
+            case OP_MDI:{
+                if (a==0) {
+                    *ptr_b = 0;
+                }else {
+                    *ptr_b = (int16_t)b % (int16_t)a;
+                }
+                cpu->cycles += 3;
+                break;
             }
 
-            cpu->cycles += 1;
-            break;
-        }
-
-        case OP_IFB: {
-            if ((b & a) != 0 ) {
-            }else {
-                skip_instruction(cpu);
+            case OP_AND: {
+                *ptr_b = a & b;
                 cpu->cycles++;
             }
-            cpu->cycles += 2;
-            break;
-        }
 
-        case OP_IFC: {
-            if ((b & a) == 0 ) {
-            }else {
-                skip_instruction(cpu);
+            case OP_BOR: {
+                *ptr_b = a || b;
                 cpu->cycles++;
             }
-            cpu->cycles += 2;
-            break;
-        }
 
-        case OP_IFE: {
-            if (b == a) {
-            }else {
-                skip_instruction(cpu);
+            case OP_XOR:{
+                *ptr_b = a ^ b;
                 cpu->cycles++;
             }
-            cpu->cycles += 2;
-            break;
-        }
 
-        case OP_IFN: {
-            if (b != a) {
-            }else {
-                skip_instruction(cpu);
+            case OP_SHR:{
+                if (a >= 16) {
+                    *ptr_b = 0;
+                    cpu->ex = (a >= 32) ? 0 : (b >> (a - 16)) & 0xFFFF;
+                } else {
+                    *ptr_b = (b >> a) & 0xFFFF;
+                    cpu->ex = (((uint32_t)b << 16) >> a) & 0xFFFF;
+                }
+
                 cpu->cycles++;
+                break;
             }
-            cpu->cycles += 2;
-            break;
-        }
 
-        case OP_IFG: {
-            if (b > a) {
-            }else {
-                skip_instruction(cpu);
+            case OP_ASR: {
+                if (a >= 16) {
+                    *ptr_b = ((int16_t)b < 0) ? 0xFFFF : 0x0000;
+                    cpu->ex = (a >= 32) ? 0 : (int16_t)b >> (a - 16) & 0xFFFF;
+                } else {
+                    *ptr_b = ((int16_t)b >> a) & 0xFFFF;
+                    cpu->ex = (((int32_t)b << 16) >> a) & 0xFFFF;
+                }
                 cpu->cycles++;
+                break;
             }
-            cpu->cycles += 2;
-            break;
-        }
 
-        case OP_IFA: {
-            if ((int16_t)b > (int16_t)a) {
-            }else {
-                skip_instruction(cpu);
+            case OP_SHL: {
+                if (a >= 16) {
+                    *ptr_b = 0;
+                    cpu->ex = (a >= 32) ? 0 : (b << (a - 16)) & 0xFFFF;
+                } else {
+                    *ptr_b = (b << a) & 0xFFFF;
+                    cpu->ex = (((uint32_t)b << a) >> 16) & 0xFFFF;
+                }
+
+                cpu->cycles += 1;
+                break;
+            }
+
+            case OP_IFB: {
+                if ((b & a) != 0 ) {
+                }else {
+                    skip_instruction(cpu);
+                    cpu->cycles++;
+                }
+                cpu->cycles += 2;
+                break;
+            }
+
+            case OP_IFC: {
+                if ((b & a) == 0 ) {
+                }else {
+                    skip_instruction(cpu);
+                    cpu->cycles++;
+                }
+                cpu->cycles += 2;
+                break;
+            }
+
+            case OP_IFE: {
+                if (b == a) {
+                }else {
+                    skip_instruction(cpu);
+                    cpu->cycles++;
+                }
+                cpu->cycles += 2;
+                break;
+            }
+
+            case OP_IFN: {
+                if (b != a) {
+                }else {
+                    skip_instruction(cpu);
+                    cpu->cycles++;
+                }
+                cpu->cycles += 2;
+                break;
+            }
+
+            case OP_IFG: {
+                if (b > a) {
+                }else {
+                    skip_instruction(cpu);
+                    cpu->cycles++;
+                }
+                cpu->cycles += 2;
+                break;
+            }
+
+            case OP_IFA: {
+                if ((int16_t)b > (int16_t)a) {
+                }else {
+                    skip_instruction(cpu);
+                    cpu->cycles++;
+                }
+                cpu->cycles += 2;
+                break;
+            }
+
+            case OP_IFL: {
+                if (b < a) {
+                }else {
+                    skip_instruction(cpu);
+                    cpu->cycles++;
+                }
+                cpu->cycles += 2;
+                break;
+            }
+
+            case OP_IFU: {
+                if ((int16_t)b < (int16_t)a) {
+                }else {
+                    skip_instruction(cpu);
+                    cpu->cycles++;
+                }
+                cpu->cycles += 2;
+                break;
+            }
+
+            case OP_ADX: {
+                const uint32_t rest = b + a + cpu->ex;
+                *ptr_b = rest & 0xffff;
+                cpu->ex = (rest > 0xFFFF) ? 0x0001 : 0x0000;
+                cpu->cycles += 3;
+                break;
+            }
+            case OP_SBX: {
+                const int32_t rest = (int16_t)b - (int16_t)a + cpu->ex;
+                *ptr_b = rest & 0xFFFF;
+                cpu->ex = (rest < 0) ? 0xFFFF : 0x0000;
+                cpu->cycles += 3;
+                break;
+            }
+
+            case OP_STI: {
+                *ptr_b = a;
+                cpu->reg[I]++;
+                cpu->reg[J]++;
                 cpu->cycles++;
+                break;
             }
-            cpu->cycles += 2;
-            break;
-        }
 
-        case OP_IFL: {
-            if (b < a) {
-            }else {
-                skip_instruction(cpu);
+            case OP_STD: {
+                *ptr_b = a;
+                cpu->reg[I]--;
+                cpu->reg[J]--;
                 cpu->cycles++;
+                break;
             }
-            cpu->cycles += 2;
-            break;
+            default: cpu->cycles++; break;
         }
+    }
+}
 
-        case OP_IFU: {
-            if ((int16_t)b < (int16_t)a) {
-            }else {
-                skip_instruction(cpu);
-                cpu->cycles++;
-            }
-            cpu->cycles += 2;
-            break;
-        }
 
-        case OP_ADX: {
-            const uint32_t rest = b + a + cpu->ex;
-            *ptr_b = rest & 0xffff;
-            cpu->ex = (rest > 0xFFFF) ? 0x0001 : 0x0000;
-            cpu->cycles += 3;
-            break;
-        }
-        case OP_SBX: {
-            const int32_t rest = (int16_t)b - (int16_t)a + cpu->ex;
-            *ptr_b = rest & 0xFFFF;
-            cpu->ex = (rest < 0) ? 0xFFFF : 0x0000;
-            cpu->cycles += 3;
-            break;
-        }
+void skip_instruction(DCPU16 *cpu) {
+    uint16_t instr = cpu->ram[cpu->pc++];
 
-        case OP_STI: {
-            *ptr_b = a;
-            cpu->reg[I]++;
-            cpu->reg[J]++;
-            cpu->cycles++;
-            break;
-        }
+    uint8_t opcode = instr & 0x1F;
+    uint8_t b = (instr >> 5) & 0x1F;
+    uint8_t a = (instr >> 10) & 0x3F;
 
-        case OP_STD: {
-            *ptr_b = a;
-            cpu->reg[I]--;
-            cpu->reg[J]--;
-            cpu->cycles++;
-            break;
-        }
-        default: cpu->cycles++; break;
+    if ((a >= PTR_REG_NW && a <= 0x17) || a == PTR_NW || a == NW) {
+        cpu->pc++;
     }
 
+    if (opcode != 0) {
+        if ((b >= PTR_REG_NW && b <= 0x17) || b == PTR_NW || b == NW) {
+            cpu->pc++;
+        }
+    }
+
+    if (opcode >= PTR_REG_NW && opcode <= 0x17) {
+        skip_instruction(cpu);
+        cpu->cycles += 1;
+    }
 }
+
 
 uint16_t* operand_val(DCPU16 *cpu, const uint_fast8_t val, const bool is_a) {
     switch (val) {
@@ -335,11 +364,6 @@ uint16_t* operand_val(DCPU16 *cpu, const uint_fast8_t val, const bool is_a) {
 
     }
 }
-
-inline void skip_instruction(DCPU16 *cpu) {
-    //TODO: SKIP INSTRUCTION FOR IF
-}
-
 
 inline void specop_parse(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcode) {
     switch (opcode) {
