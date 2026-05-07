@@ -27,6 +27,7 @@ void dcpu_init(DCPU16 *cpu){
 
     cpu->num_hardware = 0;
     cpu->bus = NULL;
+    cpu->halted = false;
 }
 
 void dcpu_step(DCPU16 *cpu) {
@@ -330,7 +331,7 @@ void skip_instruction(DCPU16 *cpu) {
 uint16_t* operand_val(DCPU16 *cpu, const uint_fast8_t val, const bool is_a) {
     switch (val) {
         case REG_START ... 0x07:
-            return &cpu->reg[val - REG_START];
+            return &cpu->reg[val];
 
         case PTR_REG ... 0x0F:
             return &cpu->ram[cpu->reg[val - PTR_REG]];
@@ -376,7 +377,13 @@ uint16_t* operand_val(DCPU16 *cpu, const uint_fast8_t val, const bool is_a) {
 }
 
 static void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcode) {
-    switch (opcode) {
+    switch (opcode)
+    {
+        case SOP_HAL:{
+                cpu->halted = true;
+                printf("CPU Halted by software interrupt.\n");
+            break;
+        }
         case SOP_JSR: {
             cpu->ram[--cpu->sp] = cpu->pc;
             cpu->pc = a;
