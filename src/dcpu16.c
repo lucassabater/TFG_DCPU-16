@@ -1,7 +1,9 @@
 #include "../include/dcpu16.h"
+#include "../include/hardware_device.h"
 
 #include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 
 static uint16_t dummy_literal = 0;
@@ -27,7 +29,7 @@ void dcpu_init(DCPU16 *cpu){
     cpu->bus = NULL;
 }
 
-void cpu_step(DCPU16 *cpu) {
+void dcpu_step(DCPU16 *cpu) {
     const uint16_t instr = cpu->ram[cpu->pc++];
 
     const uint8_t opcode = instr & 0x1F;
@@ -47,6 +49,7 @@ void cpu_step(DCPU16 *cpu) {
             case OP_SET:
                 *ptr_b = a;
                 cpu->cycles++;
+                break;
 
             case OP_ADD: {
                 const uint32_t rest = b + a;
@@ -129,16 +132,19 @@ void cpu_step(DCPU16 *cpu) {
             case OP_AND: {
                 *ptr_b = a & b;
                 cpu->cycles++;
+                break;
             }
 
             case OP_BOR: {
                 *ptr_b = a || b;
                 cpu->cycles++;
+                break;
             }
 
             case OP_XOR:{
                 *ptr_b = a ^ b;
                 cpu->cycles++;
+                break;
             }
 
             case OP_SHR:{
@@ -211,6 +217,7 @@ void cpu_step(DCPU16 *cpu) {
 
             case OP_IFN: {
                 if (b != a) {
+                    printf("DONT skip instruction: %04X -- %04X\n", a, b);
                 }else {
                     skip_instruction(cpu);
                     cpu->cycles++;
@@ -296,6 +303,7 @@ void cpu_step(DCPU16 *cpu) {
 
 
 void skip_instruction(DCPU16 *cpu) {
+    printf("Skip instruction: %04X\n", cpu->ex);
     uint16_t instr = cpu->ram[cpu->pc++];
 
     uint8_t opcode = instr & 0x1F;
@@ -367,38 +375,45 @@ uint16_t* operand_val(DCPU16 *cpu, const uint_fast8_t val, const bool is_a) {
     }
 }
 
-inline void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcode) {
+static void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcode) {
     switch (opcode) {
         case SOP_JSR: {
             cpu->ram[--cpu->sp] = cpu->pc;
             cpu->pc = a;
             cpu->cycles += 3;
+            break;
         }
         case SOP_INT: {
             interrupt_enqueue(cpu, a);
             cpu->cycles += 4;
+            break;
         }
         case SOP_IAG: {
             *ptr_a = cpu->ia;
             cpu->cycles++;
+            break;
         }
         case SOP_IAS: {
             cpu->ia  = a;
             cpu->cycles++;
+            break;
         }
         case SOP_RFI: {
             cpu->interrupt_enabled = false;
             cpu->reg[A] = cpu->ram[cpu->sp++];
             cpu->pc = cpu->ram[cpu->sp++];
             cpu->cycles += 3;
+            break;
         }
         case SOP_IAQ: {
             cpu->interrupt_enabled = a != 0 ? true : false;
             cpu->cycles += 2;
+            break;
         }
         case SOP_HWN: {
             *ptr_a =  cpu->num_hardware;
             cpu->cycles += 2;
+            break;
         }
         case SOP_HWQ: {
             if (a < cpu->num_hardware) {

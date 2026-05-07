@@ -1,10 +1,9 @@
 #ifndef HARDWARE_DEVICE_H
 #define HARDWARE_DEVICE_H
 
-#include "dcpu16.h"
 #include <stdint.h>
 
-struct DCPU16;
+typedef struct DCPU16 DCPU16;
 
 typedef struct DCPU_Hardware {
     uint32_t hardware_id;
@@ -16,4 +15,4 @@ typedef struct DCPU_Hardware {
 
 void connect_hardware(DCPU16 *cpu, DCPU_Hardware *hardware);
 void disconnect_hardware(DCPU16 *cpu, DCPU_Hardware *hardware);
-#endif HARDWARE_DEVICE_H
+#endif

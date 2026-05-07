@@ -4,12 +4,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "hardware_device.h"
 
 #define DCPU_REG_N 8
 #define DCPU_RAM_SIZE 65536
 #define DCPU_DEVICE_MAX 65535
 #define DCPU_INTERRUPTQ_SIZE 256
+
+typedef struct DCPU_Hardware DCPU_Hardware;
 
 typedef struct DCPU16{
     uint16_t ram[DCPU_RAM_SIZE];
@@ -100,7 +101,8 @@ typedef enum {
 void dcpu_init(DCPU16 *cpu);
 void cpu_parse(DCPU16 *cpu);
 uint16_t* operand_val(DCPU16 *cpu, uint_fast8_t number, bool is_a);
-inline void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t b);
+void dcpu_step(DCPU16 *cpu);
+static void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcode);
 static void skip_instruction(DCPU16 *cpu);
 void interrupt_enqueue(DCPU16 *cpu, uint16_t mensaje);
 void interrupt_dequeue(DCPU16 *cpu);

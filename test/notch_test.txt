@@ -1,0 +1,27 @@
+; Try some basic stuff                      aaaaaa bbbbb ooooo   HEX    DATA
+    SET A, 0x30       ;                     011111 00000 00001 | 7C01 | 0030
+    SET [0x1000], 0x20 ;                    011111 11110 00001 | 7FC1 | 0020 1000
+    SUB A, [0x1000]    ;                    011110 00000 00011 | 7803 | 1000
+    IFN A, 0x10       ;                     110001 00000 10011 | C413 |
+       SET PC, crash  ;                     011111 11100 00001 | 7F81 | 001C
+
+; Do a loopy thing
+    SET I, 10         ;                     101011 00110 00001 | AC61 |
+    SET A, 0x2000     ;                     011111 00000 00001 | 7C01 | 2000
+:loop
+    SET [0x2000+I], [A];                    001000 01010 00001 | 2141 | 2000
+    SUB I, 1          ;                     100010 00110 00011 | 88C3 |
+    IFN I, 0          ;                     100001 00110 10011 | 84D3 |
+       SET PC, loop   ;                     011111 11100 00001 | 7F81 | 000D
+
+; Call a subroutine
+    SET X, 0x4        ;                     100101 00011 00001 | 9461 |
+    JSR testsub       ; (Especial)          011111 00001 00000 | 7C20 | 0018
+    SET PC, crash     ;                     011111 11100 00001 | 7F81 | 001C
+
+:testsub
+    SHL X, 4          ;                     100101 00011 01111 | 946F |
+    SET PC, POP       ;                     011000 11100 00001 | 6381 |
+
+:crash
+    WORD 0xeee0       ; (Dato puro)                            | EEE0 |
