@@ -9,4 +9,6 @@ add_executable(untitled main.c
         include/hardware_device.h
         src/hardware_device.c
         include/emulation_utils.h
-        src/emulation_utils.c)
+        src/emulation_utils.c
+        src/generic_clock.c
+        include/generic_clock.h)
