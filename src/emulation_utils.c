@@ -10,23 +10,32 @@
 #include <stdbool.h>
 
 bool load_rom(DCPU16 *cpu, const char *file_path) {
-    FILE *file = fopen(file_path, "rb");
-    if (file == NULL) {
-        printf("ERROR: Could not open the ROM: %s\n", file_path);
-        return false;
-    }
+       FILE *file = fopen(file_path, "r");
+       if (file == NULL) {
+              printf("ERROR: No se pudo abrir el archivo: %s\n", file_path);
+              return false;
+       }
 
-    size_t words_read = fread(cpu->ram, sizeof(uint16_t), 65536, file);
+       size_t words_read = 0;
+       uint16_t value;
 
-    fclose(file);
+       // El formato "%hx," le dice: busca un hexadecimal y luego ignora una coma
+       // Añadimos un espacio delante " %hx" para que ignore saltos de línea/espacios
+       while (fscanf(file, " %4hx ,", &value) >= 1 && words_read < 65536) {
+              cpu->ram[words_read] = value;
+              printf("Leído [%04zX]: %04X\n", words_read, cpu->ram[words_read]);
+              words_read++;
+       }
 
-    for (size_t i = 0; i < words_read; i++) {
-        uint16_t value = cpu->ram[i];
-        cpu->ram[i] = (value >> 8) | (value << 8);
-    }
+       fclose(file);
 
-    printf("SUCCESS: ROM loaded. %zu words written to RAM.\n", words_read);
-    return true;
+       if (words_read == 0) {
+              printf("ERROR: No se encontraron datos válidos (revisa el formato).\n");
+              return false;
+       }
+
+       printf("SUCCESS: ROM cargada con %zu palabras.\n", words_read);
+       return true;
 }
 
 void cpu_dump(const DCPU16 *cpu) {

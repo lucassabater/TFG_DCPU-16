@@ -31,6 +31,7 @@ typedef struct DCPU16{
     uint16_t num_hardware;
 
     unsigned long cycles;
+    bool halted;
 } DCPU16;
 
 
@@ -67,6 +68,7 @@ typedef enum {
 
 
 typedef enum {
+    SOP_HAL = 0x00,
     SOP_JSR = 0x01,
     SOP_INT = 0x08,
     SOP_IAG = 0x09,
