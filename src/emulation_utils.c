@@ -2,12 +2,11 @@
 #ifndef UNTITLED_EMULATIO_UTILS_H
 #define UNTITLED_EMULATIO_UTILS_H
 
-#include "../include/hardware_device.h"
-#include "../include/dcpu16.h"
+#include "hardware_device.h"
+#include "dcpu16.h"
 
 #include <stdio.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 bool load_rom(DCPU16 *cpu, const char *file_path) {
        FILE *file = fopen(file_path, "r");

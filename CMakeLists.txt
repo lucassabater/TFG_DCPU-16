@@ -1,14 +1,26 @@
-cmake_minimum_required(VERSION 4.1)
-project(untitled C)
+cmake_minimum_required(VERSION 3.10)
+project(dcpu_emulator C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(untitled main.c
-        include/dcpu16.h
+set(SOURCES
+        main.c
         src/dcpu16.c
-        include/hardware_device.h
         src/hardware_device.c
-        include/emulation_utils.h
         src/emulation_utils.c
         src/generic_clock.c
-        include/generic_clock.h)
+        src/keyboard.c
+        src/keyboard.h
+)
+
+set(HEADERS
+        include/dcpu16.h
+        include/hardware_device.h
+        include/emulation_utils.h
+        include/generic_clock.h
+        src/keyboard.c
+        src/keyboard.h
+)
+add_executable(dcpu_emulator ${SOURCES} ${HEADERS})
+
+target_include_directories(dcpu_emulator PUBLIC include)

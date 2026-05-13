@@ -1,8 +1,7 @@
-#include "../include/dcpu16.h"
-#include "../include/hardware_device.h"
+#include "dcpu16.h"
+#include "hardware_device.h"
 
 #include <string.h>
-#include <stdbool.h>
 #include <stdio.h>
 
 

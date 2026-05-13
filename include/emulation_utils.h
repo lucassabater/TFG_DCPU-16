@@ -1,7 +1,6 @@
 #ifndef EMULATION_UTILS_H
 #define EMULATION_UTILS_H
 
-#include "dcpu16.h"
 #include <stdbool.h>
 
 // Forward declaration of the DCPU16 struct to avoid circular dependencies

@@ -1,5 +1,5 @@
-#include "../include/hardware_device.h"
-#include "../include/dcpu16.h"
+#include "hardware_device.h"
+#include "dcpu16.h"
 
 #include <stdlib.h>
 

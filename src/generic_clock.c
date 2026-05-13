@@ -1,20 +1,5 @@
-#include "../include/generic_clock.h"
-
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <time.h>
-#endif
-
-static uint64_t current_time_ms() {
-#ifdef _WIN32
-    return GetTickCount64();
-#else
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)(ts.tv_sec * 1000 + (ts.tv_nsec / 1000000));
-#endif
-}
+#include "generic_clock.h"
+#include "dcpu16.h"
 
 static void handle_hwi(DCPU_Hardware *hw, DCPU16 *cpu) {
     GenericClock *clock = (GenericClock *)hw;
@@ -22,12 +7,7 @@ static void handle_hwi(DCPU_Hardware *hw, DCPU16 *cpu) {
     switch (cpu->reg[0]) {
         case 0: // SET_TICK_RATE
             clock->interval = cpu->reg[1];
-            if (clock->interval == 0) {
-                clock->next_tick_time = 0;
-            } else {
-                clock->ms_per_tick = (1000 * clock->interval) / 60;
-                clock->next_tick_time = current_time_ms() + clock->ms_per_tick;
-            }
+            clock->cycle_accumulator = 0;
             clock->ticks = 0;
             break;
 
@@ -52,21 +32,20 @@ void clock_init(GenericClock *clock) {
     clock->interval = 0;
     clock->ticks = 0;
     clock->int_message = 0;
-    clock->next_tick_time = 0;
+    clock->cycle_accumulator = 0;
 }
 
-void clock_tick(GenericClock *clock, DCPU16 *cpu) {
+void clock_tick(GenericClock *clock, DCPU16 *cpu, uint32_t cycles_executed) {
     if (clock->interval == 0) return;
+    clock->cycle_accumulator += cycles_executed;
 
-    uint64_t now = current_time_ms();
+    uint32_t cycles_per_tick = (uint32_t)((CLOCK_HZ * clock->interval) / 60);
 
-    if (now >= clock->next_tick_time) {
+    if (clock->cycle_accumulator >= cycles_per_tick) {
         clock->ticks++;
-
+        clock->cycle_accumulator -= cycles_per_tick;
         if (clock->int_message != 0) {
             interrupt_enqueue(cpu, clock->int_message);
         }
-
-        clock->next_tick_time += clock->ms_per_tick;
     }
 }

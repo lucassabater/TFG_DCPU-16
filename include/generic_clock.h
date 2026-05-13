@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 #include "hardware_device.h"
-#include "dcpu16.h"
 
+#define CLOCK_HZ              100000
 #define CLOCK_HARDWARE_ID      0x12d0b402
 #define CLOCK_HARDWARE_VERSION 0x0001
 #define CLOCK_MANUFACTURER     0x00000000
@@ -14,12 +14,10 @@ typedef struct {
     uint16_t interval;
     uint16_t int_message;
     uint16_t ticks;
-
-    uint64_t next_tick_time;
-    uint32_t ms_per_tick;
+    uint32_t cycle_accumulator;
 } GenericClock;
 
 void clock_init(GenericClock *clock);
-void clock_tick(GenericClock *clock, DCPU16 *cpu);
+void clock_tick(GenericClock *clock, DCPU16 *cpu, uint32_t cycles);
 
 #endif
