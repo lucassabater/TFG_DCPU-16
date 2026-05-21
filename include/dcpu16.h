@@ -103,7 +103,7 @@ typedef enum {
 void dcpu_init(DCPU16 *cpu);
 void cpu_parse(DCPU16 *cpu);
 uint16_t* operand_val(DCPU16 *cpu, uint_fast8_t number, bool is_a);
-void dcpu_step(DCPU16 *cpu);
+uint32_t dcpu_step(DCPU16 *cpu);
 static void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcode);
 static void skip_instruction(DCPU16 *cpu);
 void interrupt_enqueue(DCPU16 *cpu, uint16_t mensaje);

@@ -29,19 +29,19 @@ void dcpu_init(DCPU16 *cpu){
     cpu->halted = false;
 }
 
-void dcpu_step(DCPU16 *cpu) {
-    const uint16_t instr = cpu->ram[cpu->pc++];
+uint32_t dcpu_step(DCPU16 *cpu) {
+    // 1. Guardamos el estado de los ciclos antes de ejecutar nada
+    uint32_t initial_cycles = cpu->cycles;
 
+    const uint16_t instr = cpu->ram[cpu->pc++];
     const uint8_t opcode = instr & 0x1F;
 
     uint16_t *ptr_a = operand_val(cpu, (instr >> 10) & 0x3F, true);
-
     uint16_t a = *ptr_a;
 
     if (opcode == OP_SPECIAL) {
-        specop_exec(cpu, ptr_a, a ,(instr >> 5) & 0x1F);
-
-    }else {
+        specop_exec(cpu, ptr_a, a, (instr >> 5) & 0x1F);
+    } else {
         uint16_t *ptr_b = operand_val(cpu, (instr >> 5) & 0x1F, false);
         uint16_t b = *ptr_b;
 
@@ -112,7 +112,7 @@ void dcpu_step(DCPU16 *cpu) {
             case OP_MOD: {
                 if (a==0) {
                     *ptr_b = 0;
-                }else {
+                } else {
                     *ptr_b = b % a;
                 }
                 cpu->cycles += 3;
@@ -122,7 +122,7 @@ void dcpu_step(DCPU16 *cpu) {
             case OP_MDI:{
                 if (a==0) {
                     *ptr_b = 0;
-                }else {
+                } else {
                     *ptr_b = (int16_t)b % (int16_t)a;
                 }
                 cpu->cycles += 3;
@@ -155,7 +155,6 @@ void dcpu_step(DCPU16 *cpu) {
                     *ptr_b = (b >> a) & 0xFFFF;
                     cpu->ex = (((uint32_t)b << 16) >> a) & 0xFFFF;
                 }
-
                 cpu->cycles++;
                 break;
             }
@@ -180,14 +179,12 @@ void dcpu_step(DCPU16 *cpu) {
                     *ptr_b = (b << a) & 0xFFFF;
                     cpu->ex = (((uint32_t)b << a) >> 16) & 0xFFFF;
                 }
-
                 cpu->cycles += 1;
                 break;
             }
 
             case OP_IFB: {
-                if ((b & a) != 0 ) {
-                }else {
+                if ((b & a) == 0) {
                     skip_instruction(cpu);
                     cpu->cycles++;
                 }
@@ -196,8 +193,7 @@ void dcpu_step(DCPU16 *cpu) {
             }
 
             case OP_IFC: {
-                if ((b & a) == 0 ) {
-                }else {
+                if ((b & a) != 0) {
                     skip_instruction(cpu);
                     cpu->cycles++;
                 }
@@ -206,8 +202,7 @@ void dcpu_step(DCPU16 *cpu) {
             }
 
             case OP_IFE: {
-                if (b == a) {
-                }else {
+                if (b != a) {
                     skip_instruction(cpu);
                     cpu->cycles++;
                 }
@@ -216,9 +211,7 @@ void dcpu_step(DCPU16 *cpu) {
             }
 
             case OP_IFN: {
-                if (b != a) {
-                    printf("DONT skip instruction: %04X -- %04X\n", a, b);
-                }else {
+                if (b == a) {
                     skip_instruction(cpu);
                     cpu->cycles++;
                 }
@@ -227,8 +220,7 @@ void dcpu_step(DCPU16 *cpu) {
             }
 
             case OP_IFG: {
-                if (b > a) {
-                }else {
+                if (b <= a) {
                     skip_instruction(cpu);
                     cpu->cycles++;
                 }
@@ -237,8 +229,7 @@ void dcpu_step(DCPU16 *cpu) {
             }
 
             case OP_IFA: {
-                if ((int16_t)b > (int16_t)a) {
-                }else {
+                if ((int16_t)b <= (int16_t)a) {
                     skip_instruction(cpu);
                     cpu->cycles++;
                 }
@@ -247,8 +238,7 @@ void dcpu_step(DCPU16 *cpu) {
             }
 
             case OP_IFL: {
-                if (b < a) {
-                }else {
+                if (b >= a) {
                     skip_instruction(cpu);
                     cpu->cycles++;
                 }
@@ -257,8 +247,7 @@ void dcpu_step(DCPU16 *cpu) {
             }
 
             case OP_IFU: {
-                if ((int16_t)b < (int16_t)a) {
-                }else {
+                if ((int16_t)b >= (int16_t)a) {
                     skip_instruction(cpu);
                     cpu->cycles++;
                 }
@@ -273,6 +262,7 @@ void dcpu_step(DCPU16 *cpu) {
                 cpu->cycles += 3;
                 break;
             }
+
             case OP_SBX: {
                 const int32_t rest = (int16_t)b - (int16_t)a + cpu->ex;
                 *ptr_b = rest & 0xFFFF;
@@ -299,6 +289,7 @@ void dcpu_step(DCPU16 *cpu) {
             default: cpu->cycles++; break;
         }
     }
+    return cpu->cycles - initial_cycles;
 }
 
 

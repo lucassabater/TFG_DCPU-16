@@ -10,7 +10,6 @@ set(SOURCES
         src/emulation_utils.c
         src/generic_clock.c
         src/keyboard.c
-        src/keyboard.h
 )
 
 set(HEADERS
@@ -18,9 +17,19 @@ set(HEADERS
         include/hardware_device.h
         include/emulation_utils.h
         include/generic_clock.h
-        src/keyboard.c
-        src/keyboard.h
+        include/keyboard.h
 )
+
 add_executable(dcpu_emulator ${SOURCES} ${HEADERS})
 
-target_include_directories(dcpu_emulator PUBLIC include)
+target_include_directories(dcpu_emulator PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+set(SDL2_PATH "${CMAKE_CURRENT_SOURCE_DIR}/lib/SDL2")
+
+target_include_directories(dcpu_emulator PUBLIC ${SDL2_PATH}/include)
+
+target_link_directories(dcpu_emulator PUBLIC ${SDL2_PATH}/lib)
+
+target_link_libraries(dcpu_emulator mingw32 SDL2main SDL2)
+
+file(COPY "${SDL2_PATH}/bin/SDL2.dll" DESTINATION "${CMAKE_BINARY_DIR}")
