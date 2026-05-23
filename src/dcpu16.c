@@ -19,7 +19,7 @@ void dcpu_init(DCPU16 *cpu){
     cpu->cycles = 0;
 
     memset(cpu->interruptq, 0, sizeof(cpu->interruptq));
-    cpu->iq_head = -1;
+    cpu->iq_head = 0;
     cpu->iq_tail = 0;
     cpu->iq_count = 0;
     cpu->interrupt_enabled = true;
@@ -31,6 +31,9 @@ void dcpu_init(DCPU16 *cpu){
 }
 
 uint32_t dcpu_step(DCPU16 *cpu) {
+
+    interrupt_dequeue(cpu);
+
     uint32_t initial_cycles = cpu->cycles;
 
     const uint16_t instr = cpu->ram[cpu->pc++];
@@ -60,9 +63,9 @@ uint32_t dcpu_step(DCPU16 *cpu) {
             }
 
             case OP_SUB: {
-                const int32_t rest = (int16_t)b - (int16_t)a;
+                const uint32_t rest = b - a;
                 *ptr_b = rest & 0xFFFF;
-                cpu->ex = (rest < 0) ? 0xFFFF : 0x0000;
+                cpu->ex = (b < a) ? 0xFFFF : 0x0000;
                 cpu->cycles += 2;
                 break;
             }
@@ -76,7 +79,7 @@ uint32_t dcpu_step(DCPU16 *cpu) {
             }
 
             case OP_MLI: {
-                const int32_t rest = (int32_t)b * (int32_t)a;
+                const int32_t rest = (int32_t)(int16_t)b * (int32_t)(int16_t)a;
                 *ptr_b = rest & 0xFFFF;
                 cpu->ex = rest>>16 & 0xffff;
                 cpu->cycles += 2;
@@ -104,7 +107,7 @@ uint32_t dcpu_step(DCPU16 *cpu) {
                     break;
                 }
                 *ptr_b = (int16_t)b / (int16_t)a;
-                cpu->ex = ((int32_t)b << 16)/ a & 0xffff;
+                cpu->ex = (((int32_t)(int16_t)b << 16) / (int16_t)a) & 0xFFFF;
                 cpu->cycles += 3;
                 break;
             }
@@ -136,7 +139,7 @@ uint32_t dcpu_step(DCPU16 *cpu) {
             }
 
             case OP_BOR: {
-                *ptr_b = a || b;
+                *ptr_b = a | b;
                 cpu->cycles++;
                 break;
             }
@@ -160,12 +163,13 @@ uint32_t dcpu_step(DCPU16 *cpu) {
             }
 
             case OP_ASR: {
+                int16_t signed_b = (int16_t)b;
                 if (a >= 16) {
-                    *ptr_b = ((int16_t)b < 0) ? 0xFFFF : 0x0000;
-                    cpu->ex = (a >= 32) ? 0 : (int16_t)b >> (a - 16) & 0xFFFF;
+                    *ptr_b = (signed_b < 0) ? 0xFFFF : 0x0000;
+                    cpu->ex = (signed_b < 0) ? 0xFFFF : 0x0000;
                 } else {
-                    *ptr_b = ((int16_t)b >> a) & 0xFFFF;
-                    cpu->ex = (((int32_t)b << 16) >> a) & 0xFFFF;
+                    *ptr_b = (signed_b >> a) & 0xFFFF;
+                    cpu->ex = (((int32_t)signed_b << 16) >> a) & 0xFFFF;
                 }
                 cpu->cycles++;
                 break;
@@ -264,9 +268,11 @@ uint32_t dcpu_step(DCPU16 *cpu) {
             }
 
             case OP_SBX: {
-                const int32_t rest = (int16_t)b - (int16_t)a + cpu->ex;
+                uint16_t carry_in = (cpu->ex == 0xFFFF) ? 1 : 0;
+                uint32_t rest = (uint32_t)b - (uint32_t)a - carry_in;
+
                 *ptr_b = rest & 0xFFFF;
-                cpu->ex = (rest < 0) ? 0xFFFF : 0x0000;
+                cpu->ex = (rest > 0xFFFF) ? 0xFFFF : 0x0000;
                 cpu->cycles += 3;
                 break;
             }
@@ -294,7 +300,6 @@ uint32_t dcpu_step(DCPU16 *cpu) {
 
 
 void skip_instruction(DCPU16 *cpu) {
-    printf("Skip instruction: %04X\n", cpu->ex);
     uint16_t instr = cpu->ram[cpu->pc++];
 
     uint8_t opcode = instr & 0x1F;
@@ -327,7 +332,7 @@ uint16_t* operand_val(DCPU16 *cpu, const uint_fast8_t val, const bool is_a) {
             return &cpu->ram[cpu->reg[val - PTR_REG]];
 
         case PTR_REG_NW ... 0x17:
-            return  &cpu->ram[cpu->reg[val - PTR_REG] + cpu->ram[cpu->pc++]];
+            return  &cpu->ram[cpu->reg[val - PTR_REG_NW] + cpu->ram[cpu->pc++] & 0xFFFF];
 
         case PUSH_POP:
             if (is_a) {
@@ -339,7 +344,7 @@ uint16_t* operand_val(DCPU16 *cpu, const uint_fast8_t val, const bool is_a) {
             return &cpu->ram[cpu->sp];
 
         case PICK:
-            return &cpu->ram[cpu->sp + cpu->ram[cpu->pc++]];
+            return &cpu->ram[cpu->sp + cpu->ram[cpu->pc++] & 0xffff];
 
         case SP:
             return &cpu->sp;
@@ -371,7 +376,6 @@ static void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcod
     {
         case SOP_HAL:{
             cpu->halted = true;
-            // Le restamos 1 al PC porque ya se incrementó al leer la instrucción
             printf("FATAL: CPU Halted at PC = %04X\n", cpu->pc - 1);
             break;
         }
@@ -456,7 +460,7 @@ void interrupt_enqueue(DCPU16 *cpu, uint16_t message) {
     }
 
     cpu->interruptq[cpu->iq_head] = message;
-    cpu->iq_head++;
+    cpu->iq_head = (cpu->iq_head + 1) % 256;
     cpu->iq_count++;
 }
 
@@ -464,7 +468,7 @@ void interrupt_dequeue(DCPU16 *cpu) {
     if (!cpu->interrupt_enabled && cpu->iq_count > 0) {
 
         uint16_t message = cpu->interruptq[cpu->iq_tail];
-        cpu->iq_tail++;
+        cpu->iq_tail = (cpu->iq_tail + 1) % 256;
         cpu->iq_count--;
 
         if (cpu->ia == 0) {

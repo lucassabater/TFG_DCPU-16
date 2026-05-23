@@ -9,14 +9,13 @@
 
 #define LEM1802_HARDWARE_ID      0x7349f615
 #define LEM1802_HARDWARE_VERSION 0x1802
-#define LEM1802_MANUFACTURER     0x1c6c8b36
+#define LEM1802_MANUFACTURER     0x1C6C8B36
 
 #define LEM1802_COLS 32
 #define LEM1802_ROWS 12
 #define LEM1802_WIDTH  (LEM1802_COLS * 4) // 128
 #define LEM1802_HEIGHT (LEM1802_ROWS * 8) // 96
 
-// El struct mágico de Hellige adaptado a nuestra estructura
 typedef struct {
     uint32_t glyph;
     uint32_t fg;
@@ -31,12 +30,10 @@ typedef struct {
     uint16_t palette_map;
     uint8_t border_color_idx;
 
-    // Sistema de renderizado optimizado
     TileCache cache[LEM1802_COLS * LEM1802_ROWS];
     uint32_t pixels[LEM1802_WIDTH * LEM1802_HEIGHT]; // Buffer local
     bool dirty;
 
-    // Control de parpadeo exacto
     uint32_t last_blink_time;
     bool blink_state;
 } LEM1802;

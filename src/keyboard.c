@@ -2,12 +2,14 @@
 // Created by lucas on 13/05/2026.
 //
 
-#include "../include/keyboard.h"
+#include "keyboard.h"
+
+#include <stdio.h>
 
 static void handle_hwi(DCPU_Hardware *hw, DCPU16 *cpu) {
     GenericKeyboard *kb = (GenericKeyboard *)hw;
 
-    switch (cpu->reg[0]) {
+    switch (cpu->reg[A]) {
         case 0: // CLEAR_BUFFER
             kb->head = 0;
             kb->tail = 0;
@@ -16,24 +18,24 @@ static void handle_hwi(DCPU_Hardware *hw, DCPU16 *cpu) {
 
         case 1: // GET_NEXT_KEY
             if (kb->count > 0) {
-                cpu->reg[2] = kb->buffer[kb->tail];
+                cpu->reg[C] = kb->buffer[kb->tail];
                 kb->tail = (kb->tail + 1) % KEYBOARD_BUFFER_SIZE;
                 kb->count--;
             } else {
-                cpu->reg[2] = 0;
+                cpu->reg[C] = 0;
             }
             break;
 
         case 2: // CHECK_KEY_PRESSED
-            if (cpu->reg[1] < 0x100) {
-                cpu->reg[2] = kb->is_pressed[cpu->reg[1]] ? 1 : 0; // Registro C = 1 si está pulsada
+            if (cpu->reg[B] < 0x100) {
+                cpu->reg[C] = kb->is_pressed[cpu->reg[B]] ? 1 : 0;
             } else {
-                cpu->reg[2] = 0;
+                cpu->reg[C] = 0;
             }
             break;
 
         case 3: // SET_INTERRUPT_MESSAGE
-            kb->int_message = cpu->reg[1]; // Registro B
+            kb->int_message = cpu->reg[B];
             break;
 
         default: break;

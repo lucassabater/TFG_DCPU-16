@@ -1,4 +1,7 @@
 #include "generic_clock.h"
+
+#include <stdio.h>
+
 #include "dcpu16.h"
 
 static void handle_hwi(DCPU_Hardware *hw, DCPU16 *cpu) {
@@ -6,6 +9,7 @@ static void handle_hwi(DCPU_Hardware *hw, DCPU16 *cpu) {
 
     switch (cpu->reg[0]) {
         case 0: // SET_TICK_RATE
+            // Usamos un 1 explícito en lugar de B por si acaso la macro B no es 1
             clock->interval = cpu->reg[1];
             clock->cycle_accumulator = 0;
             clock->ticks = 0;
@@ -18,8 +22,6 @@ static void handle_hwi(DCPU_Hardware *hw, DCPU16 *cpu) {
         case 2: // SET_INTERRUPT_MESSAGE
             clock->int_message = cpu->reg[1];
             break;
-
-        default: break;
     }
 }
 
@@ -39,9 +41,10 @@ void clock_tick(GenericClock *clock, DCPU16 *cpu, uint32_t cycles_executed) {
     if (clock->interval == 0) return;
     clock->cycle_accumulator += cycles_executed;
 
-    uint32_t cycles_per_tick = (uint32_t)((CLOCK_HZ * clock->interval) / 60);
+    uint32_t cycles_per_tick = (uint32_t)(((uint64_t)CLOCK_HZ * clock->interval) / 60);
+    if (cycles_per_tick == 0) cycles_per_tick = 1;
 
-    if (clock->cycle_accumulator >= cycles_per_tick) {
+    while (clock->cycle_accumulator >= cycles_per_tick) {
         clock->ticks++;
         clock->cycle_accumulator -= cycles_per_tick;
         if (clock->int_message != 0) {

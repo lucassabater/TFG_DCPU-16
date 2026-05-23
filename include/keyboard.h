@@ -10,9 +10,9 @@
 #include "hardware_device.h"
 #include "dcpu16.h"
 
-#define KEYBOARD_HARDWARE_ID      0x30cf7406
+#define KEYBOARD_HARDWARE_ID      0x30CF7406
 #define KEYBOARD_HARDWARE_VERSION 0x0001
-#define KEYBOARD_MANUFACTURER     0x00000000
+#define KEYBOARD_MANUFACTURER     0x1C6C8B36
 
 #define KEYBOARD_BUFFER_SIZE      64
 

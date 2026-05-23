@@ -5,9 +5,9 @@
 #include "hardware_device.h"
 
 #define CLOCK_HZ              100000
-#define CLOCK_HARDWARE_ID      0x12d0b402
+#define CLOCK_HARDWARE_ID      0x12D0B402
 #define CLOCK_HARDWARE_VERSION 0x0001
-#define CLOCK_MANUFACTURER     0x00000000
+#define CLOCK_MANUFACTURER     0x1C6C8B36
 
 typedef struct {
     DCPU_Hardware base;

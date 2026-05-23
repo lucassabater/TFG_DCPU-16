@@ -89,7 +89,6 @@ void lem1802_init(LEM1802 *lem) {
     lem->blink_state = false;
 }
 
-// Nueva función extraída de Hellige para el color del borde
 uint32_t lem1802_get_border_color(LEM1802 *lem, DCPU16 *cpu) {
     uint16_t border_rgb16 = (lem->palette_map)
         ? cpu->ram[(uint16_t)(lem->palette_map + lem->border_color_idx)]
@@ -97,13 +96,11 @@ uint32_t lem1802_get_border_color(LEM1802 *lem, DCPU16 *cpu) {
     return convert_color(border_rgb16);
 }
 
-// Retorna 'true' si algo ha cambiado en la pantalla y hay que llamar a RenderCopy
 bool lem1802_update(LEM1802 *lem, DCPU16 *cpu, SDL_Texture *texture) {
     if (lem->vram_map == 0) return false;
 
-    // Gestión del parpadeo
     uint32_t now = SDL_GetTicks();
-    if (now - lem->last_blink_time > 500) { // Aproximadamente 2 Hz
+    if (now - lem->last_blink_time > 500) {
         lem->blink_state = !lem->blink_state;
         lem->last_blink_time = now;
     }
@@ -127,8 +124,6 @@ bool lem1802_update(LEM1802 *lem, DCPU16 *cpu, SDL_Texture *texture) {
             uint32_t fg = convert_color(fg_rgb16);
             uint32_t bg = convert_color(bg_rgb16);
 
-            // EL TRUCO MAGNÍFICO DE HELLIGE:
-            // Si está parpadeando y le toca estar "apagado", su dibujo (glyph) es 0 absoluto.
             uint32_t glyph = 0;
             if (!blink || lem->blink_state) {
                 uint16_t lglyph = (lem->font_map) ? cpu->ram[(uint16_t)(lem->font_map + char_idx * 2)]     : default_font[char_idx * 2];
@@ -136,7 +131,6 @@ bool lem1802_update(LEM1802 *lem, DCPU16 *cpu, SDL_Texture *texture) {
                 glyph = ((uint32_t)lglyph << 16) | rglyph;
             }
 
-            // Comprobar la caché: Si el bloque es idéntico al frame anterior, ¡SÁLTALO!
             int tile_idx = row * LEM1802_COLS + col;
             if (lem->cache[tile_idx].glyph == glyph &&
                 lem->cache[tile_idx].fg == fg &&
@@ -144,7 +138,6 @@ bool lem1802_update(LEM1802 *lem, DCPU16 *cpu, SDL_Texture *texture) {
                 continue;
             }
 
-            // Si llegamos aquí, algo ha cambiado. Actualizamos caché y redibujamos el tile en el buffer.
             lem->cache[tile_idx].glyph = glyph;
             lem->cache[tile_idx].fg = fg;
             lem->cache[tile_idx].bg = bg;
@@ -167,7 +160,6 @@ bool lem1802_update(LEM1802 *lem, DCPU16 *cpu, SDL_Texture *texture) {
         }
     }
 
-    // Solo enviamos los datos a la tarjeta gráfica si al menos una letra ha cambiado
     if (screen_updated) {
         SDL_UpdateTexture(texture, NULL, lem->pixels, LEM1802_WIDTH * sizeof(uint32_t));
     }
