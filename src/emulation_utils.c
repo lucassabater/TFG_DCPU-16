@@ -37,6 +37,36 @@ bool load_rom(DCPU16 *cpu, const char *file_path) {
        return true;
 }
 
+bool load_bin(DCPU16 *cpu, const char *filename) {
+       // IMPORTANTE: "rb" significa Read Binary. Evita que Windows corrompa los saltos de línea.
+       FILE *f = fopen(filename, "rb");
+       if (!f) return false;
+
+       uint16_t addr = 0;
+       uint8_t bytes[2];
+
+       // Leemos el archivo de 2 en 2 bytes hasta llegar al final o llenar la RAM
+       while (fread(bytes, 1, 2, f) == 2 && addr < 0x10000) {
+              // Reconstruimos la palabra de 16 bits (Big-Endian -> Ordenador PC)
+              // El primer byte leído se mueve a la izquierda, el segundo se suma.
+              uint16_t word = (bytes[0] << 8) | bytes[1];
+
+              cpu->ram[addr++] = word;
+       }
+
+       fclose(f);
+       printf("BIN ROM LOAD: Leidas %d palabras exactas.\n", addr);
+
+       // Mostramos las 5 primeras posiciones para confirmar
+       printf("\n--- INSPECCION DE MEMORIA INICIAL (BIN) ---\n");
+       for (int i = 0; i < 5; i++) {
+              printf("RAM[%04X] = %04X\n", i, cpu->ram[i]);
+       }
+       printf("-------------------------------------------\n\n");
+
+       return true;
+}
+
 void cpu_dump(const DCPU16 *cpu) {
     printf("=== DCPU-16 STATE DUMP ===\n");
 

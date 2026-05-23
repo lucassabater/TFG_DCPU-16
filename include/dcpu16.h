@@ -68,7 +68,7 @@ typedef enum {
 
 
 typedef enum {
-    SOP_HAL = 0x00,
+    SOP_HAL = 0xFF,
     SOP_JSR = 0x01,
     SOP_INT = 0x08,
     SOP_IAG = 0x09,
@@ -107,5 +107,7 @@ uint32_t dcpu_step(DCPU16 *cpu);
 static void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcode);
 static void skip_instruction(DCPU16 *cpu);
 void interrupt_enqueue(DCPU16 *cpu, uint16_t mensaje);
+void connect_hardware(DCPU16 *cpu, DCPU_Hardware *hardware);
+void free_hardware(DCPU16 *cpu);
 void interrupt_dequeue(DCPU16 *cpu);
 #endif

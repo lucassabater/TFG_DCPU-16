@@ -10,6 +10,7 @@ set(SOURCES
         src/emulation_utils.c
         src/generic_clock.c
         src/keyboard.c
+        src/lem1802.c
 )
 
 set(HEADERS
@@ -18,9 +19,12 @@ set(HEADERS
         include/emulation_utils.h
         include/generic_clock.h
         include/keyboard.h
+        include/lem1802.h
 )
 
 add_executable(dcpu_emulator ${SOURCES} ${HEADERS})
+
+add_executable(dcpu_assembler assembler.c)
 
 target_include_directories(dcpu_emulator PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 

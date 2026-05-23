@@ -23,4 +23,6 @@ bool load_rom(DCPU16 *cpu, const char *file_path);
  */
 void cpu_dump(const DCPU16 *cpu);
 
+bool load_bin(DCPU16 *cpu, const char *filename);
+
 #endif

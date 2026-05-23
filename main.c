@@ -1,63 +1,65 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <SDL2/SDL.h>
 
+// Tus módulos
 #include "dcpu16.h"
 #include "generic_clock.h"
 #include "keyboard.h"
-// #include "lem1802.h" // El futuro monitor
+#include "lem1802.h"
+#include "emulation_utils.h" // <-- Aquí está tu cargador de .hex
 
-#define LEM_WIDTH 128
-#define LEM_HEIGHT 96
 #define SCALE_FACTOR 4
+#define BORDER_SIZE  8
 
-// Función traductora de SDL a DCPU (como vimos antes)
-uint16_t translate_key(SDL_Keycode sdl_key) {
+// Traductor de teclas SDL -> DCPU
+static uint16_t translate_key(SDL_Keycode sdl_key) {
     if (sdl_key >= 0x20 && sdl_key <= 0x7f) return (uint16_t)sdl_key;
     switch (sdl_key) {
-        case SDLK_BACKSPACE: return DCPU_KEY_BACKSPACE;
-        case SDLK_RETURN:    return DCPU_KEY_RETURN;
-        case SDLK_INSERT:    return DCPU_KEY_INSERT;
-        case SDLK_DELETE:    return DCPU_KEY_DELETE;
-        case SDLK_UP:        return DCPU_KEY_ARROW_UP;
-        case SDLK_DOWN:      return DCPU_KEY_ARROW_DOWN;
-        case SDLK_LEFT:      return DCPU_KEY_ARROW_LEFT;
-        case SDLK_RIGHT:     return DCPU_KEY_ARROW_RIGHT;
+        case SDLK_BACKSPACE: return KEY_BACKSPACE;
+        case SDLK_RETURN:    return KEY_RETURN;
+        case SDLK_INSERT:    return KEY_INSERT;
+        case SDLK_DELETE:    return KEY_DELETE;
+        case SDLK_UP:        return KEY_ARROW_UP;
+        case SDLK_DOWN:      return KEY_ARROW_DOWN;
+        case SDLK_LEFT:      return KEY_ARROW_LEFT;
+        case SDLK_RIGHT:     return KEY_ARROW_RIGHT;
         case SDLK_LSHIFT:
-        case SDLK_RSHIFT:    return DCPU_KEY_SHIFT;
+        case SDLK_RSHIFT:    return KEY_SHIFT;
         case SDLK_LCTRL:
-        case SDLK_RCTRL:     return DCPU_KEY_CONTROL;
+        case SDLK_RCTRL:     return KEY_CONTROL;
         default:             return 0;
     }
 }
 
 int main(int argc, char* argv[]) {
-    // 1. INICIALIZAR SDL
+    // 1. Inicializar SDL2
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
-        printf("Error iniciando SDL: %s\n", SDL_GetError());
+        printf("Error initializing SDL: %s\n", SDL_GetError());
         return -1;
     }
 
-    // 2. CREAR LA VENTANA
-    SDL_Window *window = SDL_CreateWindow("Emulador DCPU-16 (TFG Lucas)",
+    // 2. Crear Ventana y Renderizador (teniendo en cuenta el borde)
+    int window_w = (LEM1802_WIDTH + BORDER_SIZE * 2) * SCALE_FACTOR;
+    int window_h = (LEM1802_HEIGHT + BORDER_SIZE * 2) * SCALE_FACTOR;
+
+    SDL_Window *window = SDL_CreateWindow("DCPU-16 Emulator - Pac-Man",
                                           SDL_WINDOWPOS_CENTERED,
                                           SDL_WINDOWPOS_CENTERED,
-                                          LEM_WIDTH * SCALE_FACTOR,
-                                          LEM_HEIGHT * SCALE_FACTOR,
+                                          window_w, window_h,
                                           SDL_WINDOW_SHOWN);
 
-    // 3. CREAR EL RENDERER
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-    // 4. CREAR LA TEXTURA
     SDL_Texture *texture = SDL_CreateTexture(renderer,
                                              SDL_PIXELFORMAT_RGBA8888,
                                              SDL_TEXTUREACCESS_STREAMING,
-                                             LEM_WIDTH, LEM_HEIGHT);
+                                             LEM1802_WIDTH, LEM1802_HEIGHT);
 
-    // --- INICIALIZAR TU HARDWARE AQUÍ ---
+    // 3. Inicializar la Placa Base y el Hardware
     DCPU16 cpu;
-    dcpu16_init(&cpu); // O dcpu_init, dependiendo de cómo la llamaras en dcpu16.c
+    dcpu_init(&cpu);
 
     GenericClock mi_reloj;
     clock_init(&mi_reloj);
@@ -65,22 +67,34 @@ int main(int argc, char* argv[]) {
     GenericKeyboard mi_teclado;
     keyboard_init(&mi_teclado);
 
-    // (Opcional) Si tienes una función para "conectar" hardware al bus de la CPU:
-    // dcpu16_add_hardware(&cpu, (DCPU_Hardware*)&mi_reloj);
-    // dcpu16_add_hardware(&cpu, (DCPU_Hardware*)&mi_teclado);
+    LEM1802 mi_pantalla;
+    lem1802_init(&mi_pantalla);
 
-    // 5. EL BUCLE PRINCIPAL (Game Loop)
+    // Conectar al bus
+    connect_hardware(&cpu, (DCPU_Hardware*)&mi_pantalla);
+    connect_hardware(&cpu, (DCPU_Hardware*)&mi_teclado);
+    connect_hardware(&cpu, (DCPU_Hardware*)&mi_reloj);
+
+    // 4. Cargar la ROM usando tu función de utils
+    // IMPORTANTE: Cambia 'load_hex' por el nombre real de tu función
+    if (!load_rom(&cpu, "../test/tetris.bin")) {
+        if (!load_rom(&cpu, "test/tetris.bin")) {
+            printf("CRITICAL ERROR: Could not open pacman.hex\n");
+            free_hardware(&cpu);
+            SDL_Quit();
+            return -1;
+        }
+    }
+
+    // 5. Bucle Principal (100 kHz / 60 Hz)
     bool running = true;
     SDL_Event event;
-
-    // Frecuencia objetivo: 100 kHz. FPS objetivo: 60
-    const uint32_t CYCLES_PER_FRAME = 100000 / 60; // Aprox 1666 ciclos
+    const uint32_t CYCLES_PER_FRAME = 100000 / 60;
 
     while (running) {
-        // Guardamos el tiempo al inicio del frame
         Uint32 frame_start_time = SDL_GetTicks();
 
-        // A. GESTIÓN DE EVENTOS
+        // --- A. Eventos de Teclado ---
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
                 running = false;
@@ -95,29 +109,53 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // B. EJECUCIÓN DE LA CPU Y RELOJ
+        // --- B. Ciclos de CPU ---
         uint32_t cycles_this_frame = 0;
-        while (cycles_this_frame < CYCLES_PER_FRAME) {
-            uint32_t c = dcpu_step(&cpu); // Ejecuta 1 instrucción y devuelve lo que tardó
+        while (cycles_this_frame < CYCLES_PER_FRAME && !cpu.halted) {
+            uint32_t c = dcpu_step(&cpu);
             cycles_this_frame += c;
 
             clock_tick(&mi_reloj, &cpu, c);
         }
 
-        // C. RENDERIZADO
-        SDL_RenderClear(renderer);
-        SDL_RenderCopy(renderer, texture, NULL, NULL);
-        SDL_RenderPresent(renderer);
+        if (cpu.halted) {
+            cycles_this_frame = CYCLES_PER_FRAME;
+        }
 
-        // D. CONTROL DE TIEMPO (Throttling a 60 FPS)
-        // SDL_GetTicks() devuelve milisegundos. Un frame a 60 FPS debe durar ~16.6 ms.
+        // --- C. Renderizado de Pantalla ---
+        if (lem1802_update(&mi_pantalla, &cpu, texture)) {
+
+            // Color del borde
+            uint32_t border_rgba = lem1802_get_border_color(&mi_pantalla, &cpu);
+            uint8_t r = (border_rgba >> 24) & 0xFF;
+            uint8_t g = (border_rgba >> 16) & 0xFF;
+            uint8_t b = (border_rgba >> 8)  & 0xFF;
+
+            // Pintar fondo/borde
+            SDL_SetRenderDrawColor(renderer, r, g, b, 255);
+            SDL_RenderClear(renderer);
+
+            // Pintar textura en el centro
+            SDL_Rect dst_rect;
+            dst_rect.x = BORDER_SIZE * SCALE_FACTOR;
+            dst_rect.y = BORDER_SIZE * SCALE_FACTOR;
+            dst_rect.w = LEM1802_WIDTH * SCALE_FACTOR;
+            dst_rect.h = LEM1802_HEIGHT * SCALE_FACTOR;
+
+            SDL_RenderCopy(renderer, texture, NULL, &dst_rect);
+            SDL_RenderPresent(renderer);
+        }
+
+        // --- D. Control de Velocidad ---
         Uint32 frame_duration = SDL_GetTicks() - frame_start_time;
         if (frame_duration < 16) {
-            SDL_Delay(16 - frame_duration); // Dormimos la CPU real lo que sobre
+            SDL_Delay(16 - frame_duration);
         }
+        cpu_dump(&cpu);
     }
 
-    // 6. LIMPIEZA FINAL
+    // 6. Limpieza y Cierre
+    free_hardware(&cpu);
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

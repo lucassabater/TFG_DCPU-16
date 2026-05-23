@@ -3,6 +3,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 
 static uint16_t dummy_literal = 0;
@@ -30,7 +31,6 @@ void dcpu_init(DCPU16 *cpu){
 }
 
 uint32_t dcpu_step(DCPU16 *cpu) {
-    // 1. Guardamos el estado de los ciclos antes de ejecutar nada
     uint32_t initial_cycles = cpu->cycles;
 
     const uint16_t instr = cpu->ram[cpu->pc++];
@@ -370,8 +370,9 @@ static void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcod
     switch (opcode)
     {
         case SOP_HAL:{
-                cpu->halted = true;
-                printf("CPU Halted by software interrupt.\n");
+            cpu->halted = true;
+            // Le restamos 1 al PC porque ya se incrementó al leer la instrucción
+            printf("FATAL: CPU Halted at PC = %04X\n", cpu->pc - 1);
             break;
         }
         case SOP_JSR: {
@@ -478,4 +479,24 @@ void interrupt_dequeue(DCPU16 *cpu) {
         cpu->pc = cpu->ia;
         cpu->reg[A] = message;
     }
+}
+
+void dcpu_add_hardware(DCPU16 *cpu, DCPU_Hardware *hardware) {
+    if (cpu == NULL || hardware == NULL) {
+        return;
+    }
+
+    cpu->num_hardware++;
+
+    cpu->bus = realloc(cpu->bus, cpu->num_hardware * sizeof(DCPU_Hardware*));
+
+    cpu->bus[cpu->num_hardware - 1] = hardware;
+}
+
+void free_hardware(DCPU16 *cpu) {
+    if (cpu->bus != NULL) {
+        free(cpu->bus);
+        cpu->bus = NULL;
+    }
+    cpu->num_hardware = 0;
 }
