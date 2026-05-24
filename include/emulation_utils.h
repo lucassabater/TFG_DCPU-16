@@ -2,10 +2,10 @@
 #define EMULATION_UTILS_H
 
 #include <stdbool.h>
+#include "dcpu16.h"
 
 // Forward declaration of the DCPU16 struct to avoid circular dependencies
 // This tells the compiler "DCPU16 exists" without needing to include cpu.h here.
-struct DCPU16;
 
 /**
  * Loads a binary file into the CPU's RAM.

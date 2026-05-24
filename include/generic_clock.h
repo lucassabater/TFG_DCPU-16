@@ -2,9 +2,12 @@
 #define UNTITLED_GENERIC_CLOCK_H
 
 #include <stdint.h>
+
 #include "hardware_device.h"
 
 #define CLOCK_HZ              100000
+#define CLOCK_BASE_HZ         60
+
 #define CLOCK_HARDWARE_ID      0x12D0B402
 #define CLOCK_HARDWARE_VERSION 0x0001
 #define CLOCK_MANUFACTURER     0x1C6C8B36

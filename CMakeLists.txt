@@ -11,6 +11,7 @@ set(SOURCES
         src/generic_clock.c
         src/keyboard.c
         src/lem1802.c
+        src/lem_data.c
 )
 
 set(HEADERS
@@ -20,6 +21,7 @@ set(HEADERS
         include/generic_clock.h
         include/keyboard.h
         include/lem1802.h
+        include/lem_data.h
 )
 
 add_executable(dcpu_emulator ${SOURCES} ${HEADERS})

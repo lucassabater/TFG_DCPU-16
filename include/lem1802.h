@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "hardware_device.h"
-#include "dcpu16.h"
 
 #define LEM1802_HARDWARE_ID      0x7349f615
 #define LEM1802_HARDWARE_VERSION 0x1802
@@ -13,8 +12,10 @@
 
 #define LEM1802_COLS 32
 #define LEM1802_ROWS 12
-#define LEM1802_WIDTH  (LEM1802_COLS * 4) // 128
-#define LEM1802_HEIGHT (LEM1802_ROWS * 8) // 96
+#define LEM1802_COL_FACTOR 4
+#define LEM1802_ROW_FACTOR 8
+#define LEM1802_WIDTH  (LEM1802_COLS * LEM1802_COL_FACTOR) // 128
+#define LEM1802_HEIGHT (LEM1802_ROWS * LEM1802_ROW_FACTOR) // 96
 
 typedef struct {
     uint32_t glyph;
@@ -31,7 +32,7 @@ typedef struct {
     uint8_t border_color_idx;
 
     TileCache cache[LEM1802_COLS * LEM1802_ROWS];
-    uint32_t pixels[LEM1802_WIDTH * LEM1802_HEIGHT]; // Buffer local
+    uint32_t pixels[LEM1802_WIDTH * LEM1802_HEIGHT];
     bool dirty;
 
     uint32_t last_blink_time;
@@ -41,5 +42,7 @@ typedef struct {
 void lem1802_init(LEM1802 *monitor);
 bool lem1802_update(LEM1802 *monitor, DCPU16 *cpu, SDL_Texture *texture);
 uint32_t lem1802_get_border_color(LEM1802 *monitor, DCPU16 *cpu);
+
+static uint32_t convert_color(uint16_t color16);
 
 #endif

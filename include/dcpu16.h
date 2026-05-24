@@ -10,6 +10,12 @@
 #define DCPU_DEVICE_MAX 65535
 #define DCPU_INTERRUPTQ_SIZE 256
 
+#define GET_OPCODE(instr) ((instr) & 0x1F)
+#define GET_B(instr)      (((instr) >> 5) & 0x1F)
+#define GET_A(instr)      (((instr) >> 10) & 0x3F)
+
+#define FBIT_MASK 0xFFFF
+
 typedef struct DCPU_Hardware DCPU_Hardware;
 
 typedef struct DCPU16{
@@ -21,7 +27,7 @@ typedef struct DCPU16{
     uint16_t ia;
 
     uint16_t interruptq[DCPU_INTERRUPTQ_SIZE];
-    bool interrupt_enabled;
+    bool interrupt_queueing;
     uint8_t iq_head;
     uint8_t iq_tail;
     uint16_t iq_count;
@@ -87,8 +93,11 @@ typedef enum {
 
 typedef enum {
     REG_START = 0x00,
+    REG_END = 0x07,
     PTR_REG = 0x08,
+    PTR_REG_END = 0x0F,
     PTR_REG_NW = 0x10,
+    PTR_REG_NW_END = 0x17,
     PUSH_POP = 0x18,
     PEEK = 0x19,
     PICK = 0x1a,
@@ -97,17 +106,18 @@ typedef enum {
     EX = 0x1d,
     PTR_NW = 0x1e,
     NW = 0x1f,
-    LITERAL_START = 0x20
+    LITERAL_START = 0x20,
+    LITERAL_END = 0x3F,
 } operand_value_e;
 
 void dcpu_init(DCPU16 *cpu);
-void cpu_parse(DCPU16 *cpu);
-uint16_t* operand_val(DCPU16 *cpu, uint_fast8_t number, bool is_a);
 uint32_t dcpu_step(DCPU16 *cpu);
+void dcpu_interrupt_enqueue(DCPU16 *cpu, uint16_t mensaje);
+void dcpu_connect_hardware(DCPU16 *cpu, DCPU_Hardware *hardware);
+void dcpu_free_hardware(DCPU16 *cpu);
+
+static uint16_t* operand_val(DCPU16 *cpu, uint_fast8_t number, bool is_a);
 static void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcode);
 static void skip_instruction(DCPU16 *cpu);
-void interrupt_enqueue(DCPU16 *cpu, uint16_t mensaje);
-void connect_hardware(DCPU16 *cpu, DCPU_Hardware *hardware);
-void free_hardware(DCPU16 *cpu);
-void interrupt_dequeue(DCPU16 *cpu);
+static void interrupt_dequeue(DCPU16 *cpu);
 #endif

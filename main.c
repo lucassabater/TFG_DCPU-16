@@ -68,15 +68,15 @@ int main(int argc, char* argv[]) {
     lem1802_init(&mi_pantalla);
 
 
-    connect_hardware(&cpu, (DCPU_Hardware*)&mi_pantalla);
-    connect_hardware(&cpu, (DCPU_Hardware*)&mi_teclado);
-    connect_hardware(&cpu, (DCPU_Hardware*)&mi_reloj);
+    dcpu_connect_hardware(&cpu, (DCPU_Hardware*)&mi_pantalla);
+    dcpu_connect_hardware(&cpu, (DCPU_Hardware*)&mi_teclado);
+    dcpu_connect_hardware(&cpu, (DCPU_Hardware*)&mi_reloj);
 
 
     if (!load_rom(&cpu, "../test/tetris.bin")) {
         if (!load_rom(&cpu, "test/tetris.bin")) {
             printf("CRITICAL ERROR: Could not open pacman.hex\n");
-            free_hardware(&cpu);
+            dcpu_free_hardware(&cpu);
             SDL_Quit();
             return -1;
         }
@@ -142,7 +142,7 @@ int main(int argc, char* argv[]) {
         //cpu_dump(&cpu);
     }
 
-    free_hardware(&cpu);
+    dcpu_free_hardware(&cpu);
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

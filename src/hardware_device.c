@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 
-void connect_hardware(DCPU16 *cpu, DCPU_Hardware *new_device) {
+void dcpu_connect_hardware(DCPU16 *cpu, DCPU_Hardware *new_device) {
     if (cpu->num_hardware >= DCPU_DEVICE_MAX ) {return;}
     size_t new_size = (cpu->num_hardware + 1) * sizeof(DCPU_Hardware *);
     DCPU_Hardware **temp_bus = realloc(cpu->bus, new_size);

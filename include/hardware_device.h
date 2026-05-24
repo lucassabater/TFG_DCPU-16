@@ -13,6 +13,6 @@ typedef struct DCPU_Hardware {
     void (*handle_hwi)(struct DCPU_Hardware *hw, DCPU16 *cpu);
 } DCPU_Hardware;
 
-void connect_hardware(DCPU16 *cpu, DCPU_Hardware *hardware);
+void dcpu_connect_hardware(DCPU16 *cpu, DCPU_Hardware *hardware);
 void disconnect_hardware(DCPU16 *cpu, DCPU_Hardware *hardware);
 #endif

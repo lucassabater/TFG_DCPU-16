@@ -1,27 +1,25 @@
 #include "generic_clock.h"
-
-#include <stdio.h>
-
 #include "dcpu16.h"
 
 static void handle_hwi(DCPU_Hardware *hw, DCPU16 *cpu) {
     GenericClock *clock = (GenericClock *)hw;
 
-    switch (cpu->reg[0]) {
+    switch (cpu->reg[A]) {
         case 0: // SET_TICK_RATE
-            // Usamos un 1 explícito en lugar de B por si acaso la macro B no es 1
-            clock->interval = cpu->reg[1];
+            clock->interval = cpu->reg[B];
             clock->cycle_accumulator = 0;
             clock->ticks = 0;
             break;
 
         case 1: // GET_TICKS
-            cpu->reg[2] = clock->ticks;
+            cpu->reg[C] = clock->ticks;
             break;
 
         case 2: // SET_INTERRUPT_MESSAGE
-            clock->int_message = cpu->reg[1];
+            clock->int_message = cpu->reg[B];
             break;
+
+        default: break;
     }
 }
 
@@ -41,14 +39,14 @@ void clock_tick(GenericClock *clock, DCPU16 *cpu, uint32_t cycles_executed) {
     if (clock->interval == 0) return;
     clock->cycle_accumulator += cycles_executed;
 
-    uint32_t cycles_per_tick = (uint32_t)(((uint64_t)CLOCK_HZ * clock->interval) / 60);
+    uint32_t cycles_per_tick = (uint32_t)(((uint64_t)CLOCK_HZ * clock->interval) / CLOCK_BASE_HZ);
     if (cycles_per_tick == 0) cycles_per_tick = 1;
 
     while (clock->cycle_accumulator >= cycles_per_tick) {
         clock->ticks++;
         clock->cycle_accumulator -= cycles_per_tick;
         if (clock->int_message != 0) {
-            interrupt_enqueue(cpu, clock->int_message);
+            dcpu_interrupt_enqueue(cpu, clock->int_message);
         }
     }
 }

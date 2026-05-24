@@ -8,13 +8,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "hardware_device.h"
-#include "dcpu16.h"
 
 #define KEYBOARD_HARDWARE_ID      0x30CF7406
 #define KEYBOARD_HARDWARE_VERSION 0x0001
 #define KEYBOARD_MANUFACTURER     0x1C6C8B36
 
 #define KEYBOARD_BUFFER_SIZE      64
+#define KEYBOARD_CHARACTERS       0x100
 
 #define KEY_BACKSPACE        0x10
 #define KEY_RETURN           0x11
@@ -36,7 +36,7 @@ typedef struct {
     uint8_t count;
 
     uint16_t int_message;
-    bool is_pressed[0x100];
+    bool is_pressed[KEYBOARD_CHARACTERS];
 } GenericKeyboard;
 
 void keyboard_init(GenericKeyboard *kb);
