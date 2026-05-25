@@ -12,6 +12,9 @@ set(SOURCES
         src/keyboard.c
         src/lem1802.c
         src/lem_data.c
+        lib/TINYFILEDIALOGS/tinyfiledialogs.c
+        src/window.c
+        src/emulator.c
 )
 
 set(HEADERS
@@ -22,6 +25,8 @@ set(HEADERS
         include/keyboard.h
         include/lem1802.h
         include/lem_data.h
+        include/window.h
+        include/emulator.h
 )
 
 add_executable(dcpu_emulator ${SOURCES} ${HEADERS})
@@ -39,3 +44,7 @@ target_link_directories(dcpu_emulator PUBLIC ${SDL2_PATH}/lib)
 target_link_libraries(dcpu_emulator mingw32 SDL2main SDL2)
 
 file(COPY "${SDL2_PATH}/bin/SDL2.dll" DESTINATION "${CMAKE_BINARY_DIR}")
+
+target_include_directories(dcpu_emulator PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/lib/NUKLEAR)
+
+target_include_directories(dcpu_emulator PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/lib/TINYFILEDIALOGS)

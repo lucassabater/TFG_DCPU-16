@@ -1,5 +1,6 @@
 #include "keyboard.h"
 
+#include <stdio.h>
 #include <string.h>
 
 #include "dcpu16.h"
