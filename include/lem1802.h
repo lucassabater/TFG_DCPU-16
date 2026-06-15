@@ -1,5 +1,10 @@
-#ifndef DCPU_EMULATOR_LEM1802_H
-#define DCPU_EMULATOR_LEM1802_H
+/**
+* @file lem1802.h
+ * @brief Hardware definition for the LEM1802 Display peripheral.
+ */
+
+#ifndef LEM1802_H
+#define LEM1802_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -43,6 +48,4 @@ void lem1802_init(LEM1802 *monitor);
 bool lem1802_update(LEM1802 *monitor, DCPU16 *cpu, SDL_Texture *texture);
 uint32_t lem1802_get_border_color(LEM1802 *monitor, DCPU16 *cpu);
 
-static uint32_t convert_color(uint16_t color16);
-
-#endif
+#endif // LEM1802_H

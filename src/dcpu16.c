@@ -1,16 +1,31 @@
+/**
+ * @file dcpu16.c
+ * @brief Core CPU emulation logic for the DCPU-16 virtual machine.
+ */
+
 #include "dcpu16.h"
 #include "hardware_device.h"
 
 #include <string.h>
 #include <stdlib.h>
 
-
+// Silent write target for literal values as per 1.7 specification
 static uint16_t dummy_literal = 0;
 
-void dcpu_init(DCPU16 *cpu){
-    memset(cpu->ram, 0, sizeof(cpu->ram));
+// Internal static prototypes
+static void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcode);
+static void skip_instruction(DCPU16 *cpu);
+static uint16_t* operand_val(DCPU16 *cpu, uint_fast8_t val, bool is_a);
+static void interrupt_dequeue(DCPU16 *cpu);
 
+/**
+ * @brief Initializes or resets the DCPU-16 state.
+ * * @param cpu Pointer to the DCPU16 instance.
+ */
+void dcpu_init(DCPU16 *cpu) {
+    memset(cpu->ram, 0, sizeof(cpu->ram));
     memset(cpu->reg, 0, sizeof(cpu->reg));
+
     cpu->pc = 0;
     cpu->sp = 0;
     cpu->ia = 0;
@@ -21,16 +36,21 @@ void dcpu_init(DCPU16 *cpu){
     cpu->iq_head = 0;
     cpu->iq_tail = 0;
     cpu->iq_count = 0;
+
     cpu->interrupt_queueing = false;
     cpu->is_on_fire = false;
+    cpu->halted = false;
 
     cpu->num_hardware = 0;
     cpu->bus = NULL;
-    cpu->halted = false;
 }
 
+/**
+ * @brief Executes a single CPU instruction.
+ * * @param cpu Pointer to the DCPU16 instance.
+ * @return Number of clock cycles consumed by the instruction.
+ */
 uint32_t dcpu_step(DCPU16 *cpu) {
-
     interrupt_dequeue(cpu);
 
     uint32_t initial_cycles = cpu->cycles;
@@ -72,7 +92,7 @@ uint32_t dcpu_step(DCPU16 *cpu) {
             case OP_MUL: {
                 const uint32_t rest = (uint32_t)b * (uint32_t)a;
                 *ptr_b = rest & FBIT_MASK;
-                cpu->ex = ((rest)>>16) & FBIT_MASK;
+                cpu->ex = (rest >> 16) & FBIT_MASK;
                 cpu->cycles += 2;
                 break;
             }
@@ -80,53 +100,45 @@ uint32_t dcpu_step(DCPU16 *cpu) {
             case OP_MLI: {
                 const int32_t rest = (int32_t)(int16_t)b * (int32_t)(int16_t)a;
                 *ptr_b = rest & FBIT_MASK;
-                cpu->ex = rest>>16 & FBIT_MASK;
+                cpu->ex = (rest >> 16) & FBIT_MASK;
                 cpu->cycles += 2;
                 break;
             }
 
             case OP_DIV: {
-                if (a==0) {
+                if (a == 0) {
                     *ptr_b = 0;
                     cpu->ex = 0;
                     cpu->cycles += 3;
                     break;
                 }
                 *ptr_b = b / a;
-                cpu->ex = ((uint32_t)b << 16) / a & FBIT_MASK;
+                cpu->ex = (((uint32_t)b << 16) / a) & FBIT_MASK;
                 cpu->cycles += 3;
                 break;
             }
 
-            case OP_DVI:{
-                if (a==0) {
+            case OP_DVI: {
+                if (a == 0) {
                     *ptr_b = 0;
                     cpu->ex = 0;
                     cpu->cycles += 3;
                     break;
                 }
                 *ptr_b = (int16_t)b / (int16_t)a;
-                cpu->ex = (((int32_t)(int16_t)b << 16) / (int16_t)a) & FBIT_MASK;
+                cpu->ex = ((((int32_t)(int16_t)b << 16) / (int16_t)a)) & FBIT_MASK;
                 cpu->cycles += 3;
                 break;
             }
 
             case OP_MOD: {
-                if (a==0) {
-                    *ptr_b = 0;
-                } else {
-                    *ptr_b = b % a;
-                }
+                *ptr_b = (a == 0) ? 0 : b % a;
                 cpu->cycles += 3;
                 break;
             }
 
-            case OP_MDI:{
-                if (a==0) {
-                    *ptr_b = 0;
-                } else {
-                    *ptr_b = (int16_t)b % (int16_t)a;
-                }
+            case OP_MDI: {
+                *ptr_b = (a == 0) ? 0 : (int16_t)b % (int16_t)a;
                 cpu->cycles += 3;
                 break;
             }
@@ -143,13 +155,13 @@ uint32_t dcpu_step(DCPU16 *cpu) {
                 break;
             }
 
-            case OP_XOR:{
+            case OP_XOR: {
                 *ptr_b = a ^ b;
                 cpu->cycles++;
                 break;
             }
 
-            case OP_SHR:{
+            case OP_SHR: {
                 if (a >= 16) {
                     *ptr_b = 0;
                     cpu->ex = (a >= 32) ? 0 : (b >> (a - 16)) & FBIT_MASK;
@@ -291,16 +303,21 @@ uint32_t dcpu_step(DCPU16 *cpu) {
                 cpu->cycles++;
                 break;
             }
-            default: cpu->cycles++; break;
+
+            default:
+                cpu->cycles++;
+                break;
         }
     }
     return cpu->cycles - initial_cycles;
 }
 
+/**
+ * @brief Executes non-basic instructions.
+ */
 static void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcode) {
-    switch (opcode)
-    {
-        case SOP_HAL:{
+    switch (opcode) {
+        case SOP_HAL: {
             cpu->halted = true;
             break;
         }
@@ -321,7 +338,7 @@ static void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcod
             break;
         }
         case SOP_IAS: {
-            cpu->ia  = a;
+            cpu->ia = a;
             cpu->cycles++;
             break;
         }
@@ -333,32 +350,26 @@ static void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcod
             break;
         }
         case SOP_IAQ: {
-            cpu->interrupt_queueing = a != 0 ? true : false;
+            cpu->interrupt_queueing = (a != 0);
             cpu->cycles += 2;
             break;
         }
         case SOP_HWN: {
-            *ptr_a =  cpu->num_hardware;
+            *ptr_a = cpu->num_hardware;
             cpu->cycles += 2;
             break;
         }
         case SOP_HWQ: {
             if (a < cpu->num_hardware) {
                 DCPU_Hardware *hw = cpu->bus[a];
-
                 cpu->reg[A] = hw->hardware_id & 0xFFFF;
                 cpu->reg[B] = (hw->hardware_id >> 16) & 0xFFFF;
-
                 cpu->reg[C] = hw->hardware_version;
-
                 cpu->reg[X] = hw->manufacturer & 0xFFFF;
                 cpu->reg[Y] = (hw->manufacturer >> 16) & 0xFFFF;
             } else {
-                cpu->reg[A] = 0;
-                cpu->reg[B] = 0;
-                cpu->reg[C] = 0;
-                cpu->reg[X] = 0;
-                cpu->reg[Y] = 0;
+                cpu->reg[A] = 0; cpu->reg[B] = 0; cpu->reg[C] = 0;
+                cpu->reg[X] = 0; cpu->reg[Y] = 0;
             }
             cpu->cycles += 4;
             break;
@@ -366,7 +377,6 @@ static void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcod
         case SOP_HWI: {
             if (a < cpu->num_hardware) {
                 DCPU_Hardware *hw = cpu->bus[a];
-
                 if (hw->handle_hwi != NULL) {
                     hw->handle_hwi(hw, cpu);
                 }
@@ -374,11 +384,15 @@ static void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcod
             cpu->cycles += 4;
             break;
         }
-        default: cpu->cycles++; break;
+        default:
+            cpu->cycles++;
+            break;
     }
 }
 
-
+/**
+ * @brief Advances the PC past the current instruction without executing it.
+ */
 static void skip_instruction(DCPU16 *cpu) {
     uint16_t instr = cpu->ram[cpu->pc++];
 
@@ -396,13 +410,16 @@ static void skip_instruction(DCPU16 *cpu) {
         }
     }
 
+    // Handle chained conditional instructions
     if (opcode >= OP_IFB && opcode <= OP_IFU) {
         skip_instruction(cpu);
         cpu->cycles += 1;
     }
 }
 
-
+/**
+ * @brief Resolves operand values and returns a pointer to their memory/register location.
+ */
 static uint16_t* operand_val(DCPU16 *cpu, const uint_fast8_t val, const bool is_a) {
     switch (val) {
         case REG_START ... REG_END:
@@ -412,7 +429,7 @@ static uint16_t* operand_val(DCPU16 *cpu, const uint_fast8_t val, const bool is_
             return &cpu->ram[cpu->reg[val - PTR_REG]];
 
         case PTR_REG_NW ... PTR_REG_NW_END:
-            return  &cpu->ram[cpu->reg[val - PTR_REG_NW] + cpu->ram[cpu->pc++] & FBIT_MASK];
+            return &cpu->ram[(cpu->reg[val - PTR_REG_NW] + cpu->ram[cpu->pc++]) & FBIT_MASK];
 
         case PUSH_POP:
             if (is_a) {
@@ -424,7 +441,7 @@ static uint16_t* operand_val(DCPU16 *cpu, const uint_fast8_t val, const bool is_
             return &cpu->ram[cpu->sp];
 
         case PICK:
-            return &cpu->ram[cpu->sp + cpu->ram[cpu->pc++] & FBIT_MASK];
+            return &cpu->ram[(cpu->sp + cpu->ram[cpu->pc++]) & FBIT_MASK];
 
         case SP:
             return &cpu->sp;
@@ -447,13 +464,14 @@ static uint16_t* operand_val(DCPU16 *cpu, const uint_fast8_t val, const bool is_
 
         default:
             return NULL;
-
     }
 }
 
+/**
+ * @brief Triggers pending interrupts if queueing is disabled.
+ */
 static void interrupt_dequeue(DCPU16 *cpu) {
     if (!cpu->interrupt_queueing && cpu->iq_count > 0) {
-
         uint16_t message = cpu->interruptq[cpu->iq_tail];
         cpu->iq_tail = (cpu->iq_tail + 1) % DCPU_INTERRUPTQ_SIZE;
         cpu->iq_count--;
@@ -463,15 +481,18 @@ static void interrupt_dequeue(DCPU16 *cpu) {
         }
 
         cpu->interrupt_queueing = true;
-
         cpu->ram[--cpu->sp] = cpu->pc;
         cpu->ram[--cpu->sp] = cpu->reg[A];
-
         cpu->pc = cpu->ia;
         cpu->reg[A] = message;
     }
 }
 
+/**
+ * @brief Enqueues an interrupt message.
+ * * @param cpu Pointer to the DCPU16 instance.
+ * @param message The 16-bit interrupt message.
+ */
 void dcpu_interrupt_enqueue(DCPU16 *cpu, uint16_t message) {
     if (cpu->iq_count >= DCPU_INTERRUPTQ_SIZE) {
         cpu->is_on_fire = true;
@@ -483,22 +504,18 @@ void dcpu_interrupt_enqueue(DCPU16 *cpu, uint16_t message) {
     cpu->iq_count++;
 }
 
+/**
+ * @brief Attaches a hardware device to the DCPU-16 bus.
+ * * @param cpu Pointer to the DCPU16 instance.
+ * @param hardware Pointer to the DCPU_Hardware device interface.
+ */
 void dcpu_add_hardware(DCPU16 *cpu, DCPU_Hardware *hardware) {
     if (cpu == NULL || hardware == NULL) return;
 
     DCPU_Hardware **temp_bus = realloc(cpu->bus, (cpu->num_hardware + 1) * sizeof(DCPU_Hardware*));
-
     if (temp_bus == NULL) return;
 
     cpu->bus = temp_bus;
     cpu->bus[cpu->num_hardware] = hardware;
     cpu->num_hardware++;
-}
-
-void dcpu_free_hardware(DCPU16 *cpu) {
-    if (cpu->bus != NULL) {
-        free(cpu->bus);
-        cpu->bus = NULL;
-    }
-    cpu->num_hardware = 0;
 }

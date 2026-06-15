@@ -1,9 +1,10 @@
-//
-// Created by lucas on 13/05/2026.
-//
+/**
+* @file keyboard.h
+ * @brief Hardware definition for the DCPU-16 Generic Keyboard.
+ */
 
-#ifndef DCPU_EMULATOR_KEYBOARD_H
-#define DCPU_EMULATOR_KEYBOARD_H
+#ifndef KEYBOARD_H
+#define KEYBOARD_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -16,6 +17,7 @@
 #define KEYBOARD_BUFFER_SIZE      64
 #define KEYBOARD_CHARACTERS       0x100
 
+// DCPU-16 specific keycodes
 #define KEY_BACKSPACE        0x10
 #define KEY_RETURN           0x11
 #define KEY_INSERT           0x12
@@ -40,8 +42,8 @@ typedef struct {
 } GenericKeyboard;
 
 void keyboard_init(GenericKeyboard *kb);
-
 void keyboard_press_key(GenericKeyboard *kb, DCPU16 *cpu, uint16_t key_code);
 void keyboard_release_key(GenericKeyboard *kb, DCPU16 *cpu, uint16_t key_code);
+void keyboard_clear_buffer(GenericKeyboard *kb);
 
-#endif
+#endif // KEYBOARD_H

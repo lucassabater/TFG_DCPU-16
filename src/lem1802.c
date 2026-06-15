@@ -1,14 +1,26 @@
+/**
+ * @file lem1802.c
+ * @brief Implementation of the LEM1802 Display (Hardware ID 0x7349f615).
+ */
+
 #include "lem1802.h"
 #include "lem_data.h"
 #include "dcpu16.h"
 
+/**
+ * @brief Converts a 12-bit DCPU RGB color to a 32-bit RGBA host format.
+ */
 static uint32_t convert_color(uint16_t color16) {
     uint8_t r = ((color16 >> 8) & 0x0F) * 0x11;
     uint8_t g = ((color16 >> 4) & 0x0F) * 0x11;
     uint8_t b = (color16 & 0x0F) * 0x11;
+
     return (r << 24) | (g << 16) | (b << 8) | 0xFF;
 }
 
+/**
+ * @brief Processes Hardware Interrupts (HWI) sent by the CPU to the display.
+ */
 static void handle_hwi(DCPU_Hardware *hw, DCPU16 *cpu) {
     LEM1802 *lem = (LEM1802 *)hw;
 
@@ -32,10 +44,15 @@ static void handle_hwi(DCPU_Hardware *hw, DCPU16 *cpu) {
             cpu->cycles += LEM1802_PALETTE_SIZE;
             break;
 
-        default: break;
+        default:
+            break;
     }
 }
 
+/**
+ * @brief Initializes the LEM1802 peripheral state.
+ * * @param lem Pointer to the LEM1802 instance.
+ */
 void lem1802_init(LEM1802 *lem) {
     lem->base.hardware_id = LEM1802_HARDWARE_ID;
     lem->base.hardware_version = LEM1802_HARDWARE_VERSION;
@@ -55,6 +72,12 @@ void lem1802_init(LEM1802 *lem) {
     lem->blink_state = false;
 }
 
+/**
+ * @brief Retrieves the current border color in 32-bit RGBA format.
+ * * @param lem Pointer to the LEM1802 instance.
+ * @param cpu Pointer to the DCPU16 instance (to read custom palette RAM).
+ * @return The 32-bit RGBA border color.
+ */
 uint32_t lem1802_get_border_color(LEM1802 *lem, DCPU16 *cpu) {
     uint16_t border_rgb16 = (lem->palette_map != 0)
         ? cpu->ram[(uint16_t)(lem->palette_map + lem->border_color_idx)]
@@ -63,7 +86,15 @@ uint32_t lem1802_get_border_color(LEM1802 *lem, DCPU16 *cpu) {
     return convert_color(border_rgb16);
 }
 
+/**
+ * @brief Renders the current VRAM state to the pixel buffer and updates the SDL Texture.
+ * * @param lem Pointer to the LEM1802 instance.
+ * @param cpu Pointer to the DCPU16 instance.
+ * @param texture Pointer to the SDL_Texture to be updated.
+ * @return true if the screen was visually updated, false otherwise.
+ */
 bool lem1802_update(LEM1802 *lem, DCPU16 *cpu, SDL_Texture *texture) {
+    // Screen is turned off if VRAM is not mapped
     if (lem->vram_map == 0) return false;
 
     uint32_t now = SDL_GetTicks();
@@ -83,6 +114,7 @@ bool lem1802_update(LEM1802 *lem, DCPU16 *cpu, SDL_Texture *texture) {
             uint16_t vaddr = (uint16_t)(lem->vram_map + row * LEM1802_COLS + col);
             uint16_t cell = cpu->ram[vaddr];
 
+            // Decode VRAM cell format
             uint8_t char_idx = cell & 0x7F;
             bool blink       = (cell >> 7) & 0x01;
             uint8_t bg_idx   = (cell >> 8) & 0x0F;
@@ -98,9 +130,12 @@ bool lem1802_update(LEM1802 *lem, DCPU16 *cpu, SDL_Texture *texture) {
             uint32_t fg = convert_color(fg_rgb16);
             uint32_t bg = convert_color(bg_rgb16);
 
+            // Hide blinking characters if in the off-state
             uint32_t visual_glyph = (blink && !lem->blink_state) ? 0x00000000 : base_glyph;
 
             int tile_idx = row * LEM1802_COLS + col;
+
+            // Skip pixel calculation if tile data has not changed
             if (lem->cache[tile_idx].glyph == visual_glyph &&
                 lem->cache[tile_idx].fg == fg &&
                 lem->cache[tile_idx].bg == bg &&
@@ -113,6 +148,7 @@ bool lem1802_update(LEM1802 *lem, DCPU16 *cpu, SDL_Texture *texture) {
             lem->cache[tile_idx].bg = bg;
             screen_updated = true;
 
+            // Render 4x8 character pixels
             for (int dx = 0; dx < LEM1802_COL_FACTOR; dx++) {
                 uint8_t column_data = (visual_glyph >> (24 - (dx * 8))) & 0xFF;
 
@@ -128,6 +164,7 @@ bool lem1802_update(LEM1802 *lem, DCPU16 *cpu, SDL_Texture *texture) {
         }
     }
 
+    // Only upload to GPU if VRAM visually changed
     if (screen_updated) {
         SDL_UpdateTexture(texture, NULL, lem->pixels, LEM1802_WIDTH * sizeof(uint32_t));
     }

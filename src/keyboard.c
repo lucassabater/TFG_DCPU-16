@@ -1,10 +1,16 @@
+/**
+ * @file keyboard.c
+ * @brief Implementation of the DCPU-16 Generic Keyboard (Hardware ID 0x30c17406).
+ */
+
 #include "keyboard.h"
-
-#include <stdio.h>
-#include <string.h>
-
 #include "dcpu16.h"
 
+#include <string.h>
+
+/**
+ * @brief Processes Hardware Interrupts (HWI) sent by the CPU to the keyboard.
+ */
 static void handle_hwi(DCPU_Hardware *hw, DCPU16 *cpu) {
     GenericKeyboard *kb = (GenericKeyboard *)hw;
 
@@ -37,10 +43,15 @@ static void handle_hwi(DCPU_Hardware *hw, DCPU16 *cpu) {
             kb->int_message = cpu->reg[B];
             break;
 
-        default: break;
+        default:
+            break;
     }
 }
 
+/**
+ * @brief Initializes the keyboard peripheral state.
+ * * @param kb Pointer to the GenericKeyboard instance.
+ */
 void keyboard_init(GenericKeyboard *kb) {
     kb->base.hardware_id = KEYBOARD_HARDWARE_ID;
     kb->base.hardware_version = KEYBOARD_HARDWARE_VERSION;
@@ -55,8 +66,16 @@ void keyboard_init(GenericKeyboard *kb) {
     memset(kb->is_pressed, 0, sizeof(kb->is_pressed));
 }
 
+/**
+ * @brief Injects a key press event into the hardware buffer and triggers interrupts.
+ * * @param kb Pointer to the GenericKeyboard instance.
+ * @param cpu Pointer to the DCPU16 instance (for interrupt queueing).
+ * @param key_code The DCPU-16 specific keycode.
+ */
 void keyboard_press_key(GenericKeyboard *kb, DCPU16 *cpu, uint16_t key_code) {
     if (key_code >= KEYBOARD_CHARACTERS) return;
+
+    // Discard key if buffer is full
     if (kb->count < KEYBOARD_BUFFER_SIZE) {
         kb->buffer[kb->head] = key_code;
         kb->head = (kb->head + 1) % KEYBOARD_BUFFER_SIZE;
@@ -70,12 +89,16 @@ void keyboard_press_key(GenericKeyboard *kb, DCPU16 *cpu, uint16_t key_code) {
     }
 }
 
+/**
+ * @brief Registers a key release event in the hardware state.
+ * * @param kb Pointer to the GenericKeyboard instance.
+ * @param cpu Pointer to the DCPU16 instance.
+ * @param key_code The DCPU-16 specific keycode.
+ */
 void keyboard_release_key(GenericKeyboard *kb, DCPU16 *cpu, uint16_t key_code) {
+    (void)cpu; // Suppress unused parameter warning
+
     if (key_code >= KEYBOARD_CHARACTERS) return;
 
     kb->is_pressed[key_code] = false;
-
-    if (kb->int_message != 0) {
-        dcpu_interrupt_enqueue(cpu, kb->int_message);
-    }
 }

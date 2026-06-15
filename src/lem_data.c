@@ -1,14 +1,18 @@
-//
-// Created by lucas on 24/05/2026.
-//
+/**
+* @file lem_data.c
+ * @brief Default ROM data (font and palette) for the LEM1802 display peripheral.
+ */
 
 #include "lem_data.h"
+#include <stdint.h>
 
+// 16 default colors packed in 12-bit RGB format (0x0RGB)
 const uint16_t lem1802_default_palette[LEM1802_PALETTE_SIZE] = {
     0x0000, 0x000a, 0x00a0, 0x00aa, 0x0a00, 0x0a0a, 0x0a50, 0x0aaa,
     0x0555, 0x055f, 0x05f5, 0x05ff, 0x0f55, 0x0f5f, 0x0ff5, 0x0fff
 };
 
+// 128 default characters, 2 words (32 pixels) per character
 const uint16_t lem1802_default_font[LEM1802_FONT_SIZE] = {
     0xb79e, 0x388e, 0x722c, 0x75f4, 0x19bb, 0x7f8f, 0x85f9, 0xb158,
     0x242e, 0x2400, 0x082a, 0x0800, 0x0008, 0x0000, 0x0808, 0x0808,

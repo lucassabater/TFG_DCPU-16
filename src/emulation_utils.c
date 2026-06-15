@@ -1,3 +1,8 @@
+/**
+ * @file emulation_utils.c
+ * @brief Utility functions for the DCPU-16 emulator (ROM loading, debugging).
+ */
+
 #include "emulation_utils.h"
 #include <stdio.h>
 #include <stdint.h>
@@ -5,10 +10,17 @@
 
 #define LINE_BUFFER_SIZE 512
 
+/**
+ * @brief Loads a hex-encoded text ROM into the DCPU-16 RAM.
+ *
+ * @param cpu Pointer to the DCPU16 instance.
+ * @param file_path Path to the text-based ROM file.
+ * @return true on success, false on failure.
+ */
 bool load_rom(DCPU16 *cpu, const char *file_path) {
     FILE *file = fopen(file_path, "r");
     if (file == NULL) {
-        printf("ERROR: No se pudo abrir el archivo de texto: %s\n", file_path);
+        fprintf(stderr, "ERROR: Failed to open ROM text file: %s\n", file_path);
         return false;
     }
 
@@ -22,6 +34,7 @@ bool load_rom(DCPU16 *cpu, const char *file_path) {
         while (words_read < DCPU_RAM_SIZE) {
             unsigned long val = strtoul(ptr, &endptr, 16);
 
+            // Skip non-hexadecimal characters safely
             if (ptr == endptr) {
                 if (*ptr == '\0') break;
                 ptr++;
@@ -37,15 +50,19 @@ bool load_rom(DCPU16 *cpu, const char *file_path) {
     fclose(file);
 
     if (words_read == 0) {
-        printf("ERROR: No se encontraron datos válidos. ¿Seguro que es un archivo de texto con hex?\n");
+        fprintf(stderr, "ERROR: No valid data found. Ensure the file contains valid hex values.\n");
         return false;
     }
 
-    printf("SUCCESS: ROM de TEXTO cargada con %zu palabras.\n", words_read);
+    printf("SUCCESS: Text ROM loaded with %zu words.\n", words_read);
     return true;
 }
 
-
+/**
+ * @brief Dumps the current CPU state to standard output for debugging.
+ *
+ * @param cpu Pointer to the DCPU16 instance.
+ */
 void cpu_dump(const DCPU16 *cpu) {
     printf("=== DCPU-16 STATE DUMP ===\n");
 

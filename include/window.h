@@ -1,13 +1,17 @@
-//
-// Created by lucas on 25/05/2026.
-//
+/**
+* @file window.h
+ * @brief Window management, event polling, and GUI definitions.
+ */
 
-#ifndef DCPU_EMULATOR_WINDOW_H
-#define DCPU_EMULATOR_WINDOW_H
+#ifndef WINDOW_H
+#define WINDOW_H
 
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "emulator.h"
+
+// Forward declaration for Nuklear context to avoid including nuklear.h
+struct nk_context;
 
 typedef struct {
     SDL_Window *window;
@@ -21,8 +25,7 @@ typedef struct {
 
 bool window_init(MainWindow *win);
 void window_cleanup(MainWindow *win);
-
 bool window_process_events(MainWindow *win, EmulatorState *emu);
 void window_render(MainWindow *win, EmulatorState *emu);
 
-#endif //DCPU_EMULATOR_WINDOW_H
+#endif // WINDOW_H

@@ -1,8 +1,12 @@
-#ifndef UNTITLED_GENERIC_CLOCK_H
-#define UNTITLED_GENERIC_CLOCK_H
+/**
+* @file generic_clock.h
+ * @brief Hardware definition for the DCPU-16 Generic Clock.
+ */
+
+#ifndef GENERIC_CLOCK_H
+#define GENERIC_CLOCK_H
 
 #include <stdint.h>
-
 #include "hardware_device.h"
 
 #define CLOCK_HZ              100000
@@ -23,4 +27,4 @@ typedef struct {
 void clock_init(GenericClock *clock);
 void clock_tick(GenericClock *clock, DCPU16 *cpu, uint32_t cycles);
 
-#endif
+#endif // GENERIC_CLOCK_H

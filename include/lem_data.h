@@ -1,6 +1,10 @@
+/**
+* @file lem_data.h
+ * @brief Default ROM data definitions for the LEM1802 display.
+ */
 
-#ifndef DCPU_EMULATOR_LEM_DATA_H
-#define DCPU_EMULATOR_LEM_DATA_H
+#ifndef LEM_DATA_H
+#define LEM_DATA_H
 
 #include <stdint.h>
 
@@ -11,4 +15,4 @@
 extern const uint16_t lem1802_default_palette[LEM1802_PALETTE_SIZE];
 extern const uint16_t lem1802_default_font[LEM1802_FONT_SIZE];
 
-#endif // DCPU_EMULATOR_LEM1802_DATA_H
+#endif // LEM_DATA_H
