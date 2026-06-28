@@ -317,10 +317,6 @@ uint32_t dcpu_step(DCPU16 *cpu) {
  */
 static void specop_exec(DCPU16 *cpu, uint16_t *ptr_a, uint16_t a, uint16_t opcode) {
     switch (opcode) {
-        case SOP_HAL: {
-            cpu->halted = true;
-            break;
-        }
         case SOP_JSR: {
             cpu->ram[--cpu->sp] = cpu->pc;
             cpu->pc = a;
