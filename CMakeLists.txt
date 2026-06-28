@@ -63,4 +63,9 @@ elseif(UNIX AND NOT APPLE)
     # Setup relative runtime path and copy shared objects
     set_target_properties(dcpu_emulator PROPERTIES LINK_FLAGS "-Wl,-rpath,'$ORIGIN/lib/SDL2_linux'")
     file(COPY "${SDL2_LINUX_PATH}" DESTINATION "${CMAKE_BINARY_DIR}/lib")
+
+    add_custom_command(TARGET dcpu_emulator POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E create_symlink
+            "libSDL2.so" "${CMAKE_BINARY_DIR}/lib/SDL2_linux/libSDL2-2.0.so.0"
+    )
 endif()

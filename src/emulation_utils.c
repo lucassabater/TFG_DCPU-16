@@ -66,8 +66,12 @@ bool load_rom(DCPU16 *cpu, const char *file_path) {
 void cpu_dump(const DCPU16 *cpu) {
     printf("=== DCPU-16 STATE DUMP ===\n");
 
-    printf("PC: %04X | SP: %04X | EX: %04X | IA: %04X\n",
-           cpu->pc, cpu->sp, cpu->ex, cpu->ia);
+    // Extraemos la palabra de 16 bits a la que apunta el PC actualmente
+    uint16_t current_instruction = cpu->ram[cpu->pc];
+
+    // Añadimos "(Inst: %04X)" para ver la instrucción cruda
+    printf("PC: %04X (Inst: %04X) | SP: %04X | EX: %04X | IA: %04X\n",
+           cpu->pc, current_instruction, cpu->sp, cpu->ex, cpu->ia);
     printf("Total Cycles: %u\n", cpu->cycles);
 
     printf("--- General Purpose Registers ---\n");

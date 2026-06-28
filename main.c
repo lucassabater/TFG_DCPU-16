@@ -10,7 +10,7 @@
 #include "emulation_utils.h"
 #include "emulator.h"
 #include "window.h"
-
+#define unlikely(x)     __builtin_expect(!!(x), 0)
 #define MAX_DELTA_TIME 0.1
 
 /**
@@ -62,6 +62,13 @@ int main(int argc, char* argv[]) {
             cycle_accumulator += delta_time * emu.speed_hz;
 
             while (cycle_accumulator >= 1.0) {
+
+                if (unlikely(emu.cpu.is_on_fire)) {
+                    emu.is_playing = false;
+                    cycle_accumulator = 0.0;
+                    break;
+                }
+
                 uint32_t cycles_taken = dcpu_step(&emu.cpu);
 
                 // Failsafe: prevent infinite loops
@@ -73,6 +80,8 @@ int main(int argc, char* argv[]) {
 
                 // Sync hardware peripherals to CPU cycles
                 clock_tick(&emu.clock, &emu.cpu, cycles_taken);
+
+                //cpu_dump(&emu.cpu);
             }
         } else {
             cycle_accumulator = 0.0;

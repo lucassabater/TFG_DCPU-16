@@ -56,7 +56,7 @@ typedef enum {
 } opcode_e;
 
 typedef enum {
-    SOP_HAL = 0xFF, SOP_JSR = 0x01, SOP_INT = 0x08, SOP_IAG = 0x09,
+    SOP_JSR = 0x01, SOP_INT = 0x08, SOP_IAG = 0x09,
     SOP_IAS = 0x0a, SOP_RFI = 0x0b, SOP_IAQ = 0x0c, SOP_HWN = 0x10,
     SOP_HWQ = 0x11, SOP_HWI = 0x12
 } specop_e;

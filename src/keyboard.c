@@ -5,7 +5,6 @@
 
 #include "keyboard.h"
 #include "dcpu16.h"
-
 #include <string.h>
 
 /**
