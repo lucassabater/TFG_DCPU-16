@@ -34,7 +34,6 @@ set(HEADERS
 
 # Executable targets
 add_executable(dcpu_emulator ${SOURCES} ${HEADERS})
-add_executable(dcpu_assembler assembler.c)
 
 # Include directories configuration
 target_include_directories(dcpu_emulator PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
