@@ -1,42 +1,40 @@
 # TFG_DCPU-16
  
-Emulador y toolchain para la **DCPU-16**, la CPU ficticia de 16 bits diseñada por Notch (Markus Persson) para el juego *0x10c*. Este proyecto es un Trabajo de Fin de Grado (TFG) escrito en C que incluye un emulador gráfico ciclo-exacto.
+Emulator and toolchain for the DCPU-16, the fictional 16-bit CPU designed by Notch (Markus Persson) for the game 0x10c. This project is a Final Year Project (TFG) written in C that includes a cycle-accurate graphical emulator.
  
-## Características
+### Features
  
-- **Emulador ciclo-exacto** del set de instrucciones completo de la DCPU-16 (spec 1.7): operaciones básicas (`SET`, `ADD`, `SUB`, `MUL`, `MLI`, `DIV`, `DVI`, `MOD`, `MDI`, `AND`, `BOR`, `XOR`, `SHR`, `ASR`, `SHL`, saltos condicionales `IFB/IFC/IFE/IFN/IFG/IFA/IFL/IFU`, `ADX`, `SUX`, `STI`, `STD`) y especiales (`JSR`, `INT`, `IAG`, `IAS`, `RFI`, `IAQ`, `HWN`, `HWQ`, `HWI`).
-- **Bus de hardware** con dispositivos conectables (interfaz `HWI`/`HWQ`/`HWN`).
-- **Pantalla LEM1802** (128×96 px, 32×12 caracteres) renderizada con SDL2, incluyendo color de borde y parpadeo de cursor.
-- **Teclado genérico** y **reloj genérico** (Generic Clock) como periféricos de hardware.
-- **Interfaz gráfica** construida con SDL2 + Nuklear (immediate-mode GUI): carga de ROMs mediante diálogo nativo de archivos (tinyfiledialogs), control de Play/Pause, Reset de CPU y control de velocidad de emulación (1.000–300.000 Hz).
-## Estructura del repositorio
+* Cycle-accurate emulator of the complete DCPU-16 instruction set (spec 1.7): basic operations (`SET`, `ADD`, `SUB`, `MUL`, `MLI`, `DIV`, `DVI`, `MOD`, `MDI`, `AND`, `BOR`, `XOR`, `SHR`, `ASR`, `SHL`, conditional jumps `IFB/IFC/IFE/IFN/IFG/IFA/IFL/IFU`, `ADX`, `SUX`, `STI`, `STD`) and special instructions (`JSR`, `INT`, `IAG`, `IAS`, `RFI`, `IAQ`, `HWN`, `HWQ`, `HWI`).
+* Hardware bus with connectable devices (interface `HWI`/`HWQ`/`HWN`).
+* LEM1802 display (128×96 px, 32×12 characters) rendered with SDL2, including border color and cursor blinking.
+* Generic keyboard and generic clock as hardware peripherals.
+* Graphical interface built with SDL2 + Nuklear (immediate-mode GUI): ROM loading via native file dialog (tinyfiledialogs), Play/Pause control, CPU Reset, and emulation speed control (1,000–300,000 Hz).
+### Repository Structure
  
 ```
-├── include/        Cabeceras del emulador (dcpu16, hardware, LEM1802, teclado, reloj, ventana...)
-├── lib/             Dependencias de terceros: SDL2 (Windows/Linux), Nuklear, tinyfiledialogs
-├── specifications/  Documentación de referencia de la DCPU-16
-├── src/             Implementación del emulador y sus periféricos
-├── test/            Pruebas del proyecto
-├── main.c           Punto de entrada del emulador gráfico
-└── CMakeLists.txt   Configuración de compilación (Windows y Linux)
+├── include/        Emulator headers (dcpu16, hardware, LEM1802, keyboard, clock, window...)
+├── lib/             Third-party dependencies: SDL2 (Windows/Linux), Nuklear, tinyfiledialogs
+├── specifications/  DCPU-16 reference documentation
+├── src/             Emulator implementation and peripherals
+├── test/            Project tests
+├── main.c           Graphical emulator entry point
+└── CMakeLists.txt   Build configuration (Windows and Linux)
 ```
  
-## Descargas (recomendado)
+### Downloads (Recommended)
  
-En la sección [Releases](../../releases) de este repositorio se publican paquetes `.zip` listos para usar, sin necesidad de compilar:
+Pre-compiled `.zip` packages are available in the [Releases](https://github.com/lucassabater/TFG_DCPU-16/releases) section of this repository, ready to use without compilation:
  
-- **Windows** — incluye `dcpu_emulator.exe`, `dcpu_assembler.exe` y `SDL2.dll`.
-- **Linux** — incluye `dcpu_emulator`, `dcpu_assembler` y las librerías compartidas de SDL2 necesarias.
-Basta con descomprimir el zip correspondiente a tu sistema y ejecutar el binario (en Linux puede ser necesario dar permisos de ejecución con `chmod +x dcpu_emulator dcpu_assembler`).
+* **Windows** — includes `dcpu_emulator.exe`, `dcpu_assembler.exe`, and `SDL2.dll`.
+* **Linux** — includes `dcpu_emulator`, `dcpu_assembler`, and required SDL2 shared libraries. Simply extract the zip for your system and run the binary (on Linux, you may need to grant execution permissions with `chmod +x dcpu_emulator dcpu_assembler`).
+### Building from Source
  
-## Compilación desde el código fuente
+#### Requirements
  
-### Requisitos
- 
-- CMake ≥ 3.10
-- Compilador compatible con C11 (GCC/MinGW en Windows, GCC/Clang en Linux)
-- SDL2 (ya se incluye precompilado en `lib/SDL2` para Windows y `lib/SDL2_linux` para Linux)
-### Pasos
+* CMake ≥ 3.10
+* C11-compatible compiler (GCC/MinGW on Windows, GCC/Clang on Linux)
+* SDL2 (already precompiled in `lib/SDL2` for Windows and `lib/SDL2_linux` for Linux)
+#### Steps
  
 ```bash
 mkdir build && cd build
@@ -44,20 +42,17 @@ cmake ..
 cmake --build .
 ```
  
-Esto genera dos ejecutables:
+This generates two executables:
  
-- `dcpu_emulator` — el emulador con interfaz gráfica.
-En Windows, `SDL2.dll` se copia automáticamente junto al ejecutable. En Linux, las librerías de `lib/SDL2_linux` se copian junto al binario y se enlazan mediante `rpath`.
+* `dcpu_emulator` — the emulator with graphical interface. On Windows, `SDL2.dll` is automatically copied alongside the executable. On Linux, libraries from `lib/SDL2_linux` are copied with the binary and linked via `rpath`.
+### Usage
  
-## Uso
+#### Emulator
  
-### Emulador
+Run `dcpu_emulator` and use the menu:
  
-Ejecuta `dcpu_emulator` y usa el menú:
+* **File → Open ROM...** to load a pre-assembled binary (`.bin`/`.txt`).
+* **Run → Play/Pause Emulation**, **Reset CPU**, and the **Speed (Hz)** slider to control execution.
+### Author
  
-- **File → Open ROM...** para cargar un binario (`.bin`/`.txt`) previamente ensamblado.
-- **Run → Play/Pause Emulation**, **Reset CPU** y el slider de **Speed (Hz)** para controlar la ejecución.
- 
-## Autor
- 
-Lucas Sabater — Trabajo de Fin de Grado.
+Lucas Sabater
