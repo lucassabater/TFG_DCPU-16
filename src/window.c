@@ -116,6 +116,15 @@ static void draw_nuklear_ui(MainWindow *win, EmulatorState *emu) {
 
             if (nk_menu_item_label(win->ctx, "Reset CPU", NK_TEXT_LEFT)) {
                 emu_reset(emu);
+
+                // SDL windows clean Up on reset
+                void *pixels;
+                int pitch;
+                if (SDL_LockTexture(win->lem_texture, NULL, &pixels, &pitch) == 0) {
+                    memset(pixels, 0, pitch * LEM1802_HEIGHT);
+                    SDL_UnlockTexture(win->lem_texture);
+                }
+
             }
 
             nk_menu_item_label(win->ctx, "Speed (Hz):", NK_TEXT_LEFT);
